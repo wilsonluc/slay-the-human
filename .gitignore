@@ -10,3 +10,6 @@
 bin/
 obj/
 .godot/
+
+# Personal Claude Code settings
+.claude/settings.local.json

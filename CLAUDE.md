@@ -30,8 +30,8 @@ Name things with the terms in `CONTEXT.md`. When a new term comes up, add it the
 
 ## Reference
 
-`.scrape/` holds material from zhiyue/sts2-rl-agent: their bridge mod, decompiled game source, a Python simulator, and docs. It is gitignored and stays local. Read `.scrape/NOTES.md` before touching game hooks, state reading, run startup, or game speed.
+`.scrape/` holds material from zhiyue/sts2-rl-agent: their bridge mod, a Python simulator, and docs. It is gitignored and stays local. Read `.scrape/NOTES.md` before touching game hooks, state reading, run startup, or game speed.
 
 The repo is MIT-licensed public code. Write all code in it from scratch. sts2-rl-agent has no license, and the decompiled code belongs to Mega Crit. Use both to learn how the game works, then write our own implementation.
 
-`GAME_VERSION.md` records the game build this repo targets. The decompiled source may be from an older build. Before relying on a method signature, check it against the installed game.
+`GAME_VERSION.md` records the game build this repo targets. `decompiled/` holds the game's C# source for that build; make it with `sh tools/decompile.sh`. Check every method signature the mod relies on there.

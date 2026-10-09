@@ -21,8 +21,12 @@ Changes reach `main` only through pull requests. Name branches however you like.
 
 Before writing or reviewing code, read `STANDARDS.md`. It covers DRY and YAGNI.
 
+Name things with the terms in `CONTEXT.md`. When a new term comes up, add it there.
+
 ## Reference
 
 `.scrape/` holds material from zhiyue/sts2-rl-agent: their bridge mod, decompiled game source, a Python simulator, and docs. It is gitignored and stays local. Read `.scrape/NOTES.md` before touching game hooks, state reading, run startup, or game speed.
 
-The decompiled source matches the May 2026 build. Before relying on a method signature, check it against the installed game.
+The repo is MIT-licensed public code. Write all code in it from scratch. sts2-rl-agent has no license, and the decompiled code belongs to Mega Crit. Use both to learn how the game works, then write our own implementation.
+
+`GAME_VERSION.md` records the game build this repo targets. The decompiled source may be from an older build. Before relying on a method signature, check it against the installed game.

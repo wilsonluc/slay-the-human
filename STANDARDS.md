@@ -1,23 +1,23 @@
 # Standards
 
-Rules that all code in this repo follows. Reviews check every change against every rule here.
+The generic [standards built into pr-reviewer](https://github.com/wilsonluc/pr-tools/blob/main/plugins/pr-reviewer/standards.md) apply to all code here. This file adds the rules specific to this repo, and wins where the two conflict. Reviews check every change against both.
 
-## DRY: one source of truth
+## Scope is the spec
 
-Every piece of knowledge has one authoritative home: a game constant, a protocol field name, an observation layout, a reward formula. Changing that knowledge is a one-place edit.
+A feature's scope is the acceptance criteria of its approved spec (see `specs/README.md`). When a future need is likely, write it down as an open question or a future spec.
 
-- DRY is about knowledge, not text. Two blocks that look alike but would change for different reasons stay separate. Merging them couples unrelated things.
-- Extract on the third copy (the rule of three). Two copies are a note to watch. Three copies are a refactor.
-- Before writing a helper, constant, or type, search the repo for an existing one and reuse it.
-- Cross-language knowledge (for example, a C# mod and a Python trainer sharing a protocol) has one defining side or one shared schema. The other side derives from it or is checked against it by a test.
-- Docs follow the same rule. Point to the source of truth (code, config, `--help`) instead of restating it.
+## Fail loud in training
 
-## YAGNI: build what the spec asks for
+Training data records only actions the policy actually chose.
 
-The scope of a change is the acceptance criteria of its approved spec (see `specs/README.md`). Code serves those criteria and nothing else.
+- When the agent times out, disconnects, or returns an invalid action, the episode ends as an error and is logged. It never continues on a substitute action such as a random card.
+- Report game state the mod cannot read as an error.
+- A game hook that fails to apply stops the mod at startup.
 
-- Build for today's caller. Add configuration, parameters, and extension points when a second real use appears.
-- An abstraction needs two concrete implementations to exist. One implementation is a plain function or class.
-- Delete dead code, unused parameters, and commented-out blocks. Git history keeps them.
-- When a future need is likely, write it down as an open question or a future spec. Leave the code at what is needed now.
-- Never cut these for YAGNI: input validation at trust boundaries, error handling that prevents data loss or corrupt training data, and the test that proves an acceptance criterion.
+## Reproducible runs
+
+Every training or evaluation run can be rerun to get the same result.
+
+- Each run records its seed, full config, git commit, and game build (`GAME_VERSION.md`) next to its outputs.
+- Seed every source of randomness (game seed, environment, policy, sampling) from the recorded seed.
+- A result that cannot be traced to its recorded run does not count. Rerun it.

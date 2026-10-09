@@ -12,14 +12,19 @@ Changes reach `main` only through pull requests. Name branches however you like.
 
 1. Branch off `main`.
 2. Push the branch and open a draft PR (`gh pr create --draft`). For a feature, link its spec folder in the PR body.
-3. When the spec's `tasks.md` is fully ticked, mark the PR ready (`gh pr ready`).
-4. Merge with squash. The remote deletes the branch after merge.
+3. When the spec's `tasks.md` is fully ticked, mark the PR ready (`gh pr ready`). The pr-reviewer plugin (from wilsonluc/pr-tools) then reviews it against the standards below and for bugs, and pr-addresser works through the findings.
+4. Merge with squash once the `pr-reviewer` status is green and every review conversation is resolved or answered. The remote deletes the branch after merge.
 
 `.githooks/pre-push` blocks pushes to `main`. Turn it on once per clone: `git config core.hooksPath .githooks`.
 
 ## Standards
 
-Before writing or reviewing code, read `STANDARDS.md`. It covers DRY and YAGNI.
+Before writing or reviewing code, read both standards files:
+
+- the generic standards built into pr-reviewer: `gh api repos/wilsonluc/pr-tools/contents/plugins/pr-reviewer/standards.md -H "Accept: application/vnd.github.raw"`
+- `STANDARDS.md`, the rules specific to this repo, which win where the two conflict.
+
+pr-reviewer checks every PR against both.
 
 Name things with the terms in `CONTEXT.md`. When a new term comes up, add it there.
 

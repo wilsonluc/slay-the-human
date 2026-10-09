@@ -17,6 +17,6 @@
 
 ## Checklist
 
-- [ ] Follows `STANDARDS.md` (DRY, YAGNI)
+- [ ] Follows the pr-reviewer standards and `STANDARDS.md`
 - [ ] Spec `tasks.md` fully ticked and `Status` updated
 - [ ] No game files (DLLs, packs, decompiled code) and no code copied from unlicensed sources

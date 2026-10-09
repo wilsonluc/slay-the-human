@@ -9,9 +9,35 @@ A reinforcement learning agent for **Slay the Spire 2**. It plays the game headl
 - Build PPO from the ground up.
 - Make the agent improve through self-play over time.
 
+## Setup
+
+You need `git`, the GitHub CLI `gh`, and [Claude Code](https://claude.com/claude-code).
+
+1. Log in to GitHub: `gh auth login`.
+2. Clone and enable the repo's git hooks. The pre-push hook blocks direct pushes to `main`.
+   ```
+   gh repo clone wilsonluc/slay-the-human
+   cd slay-the-human
+   git config core.hooksPath .githooks
+   ```
+3. Start Claude Code in the repo (`claude`) and trust the folder when asked. `.claude/settings.json` registers the [pr-tools](https://github.com/wilsonluc/pr-tools) marketplace and enables two plugins:
+   - `pr-reviewer@pr-tools` reviews each PR against its built-in standards, `STANDARDS.md` and `CLAUDE.md`, and looks for bugs.
+   - `pr-addresser@pr-tools` works through review conversations: it checks each finding, fixes the confirmed ones, and replies to the rest.
+
+   Accept the prompt to install them. If no prompt appears, install them by hand:
+   ```
+   /plugin marketplace add wilsonluc/pr-tools
+   /plugin install pr-reviewer@pr-tools
+   /plugin install pr-addresser@pr-tools
+   ```
+4. Check with `/plugin`: both plugins should show as enabled.
+
+Personal Claude Code settings go in `.claude/settings.local.json`, which is gitignored.
+
 ## Layout
 
-- `STANDARDS.md` — coding standards (DRY, YAGNI).
+- `STANDARDS.md` — project-specific coding standards, on top of the generic [standards built into pr-reviewer](https://github.com/wilsonluc/pr-tools/blob/main/plugins/pr-reviewer/standards.md).
+- `.claude/settings.json` — shared Claude Code settings: the pr-tools plugins.
 - `CONTEXT.md` — glossary of game and training terms.
 - `GAME_VERSION.md` — the game build, Godot, and .NET versions this repo targets.
 - `.githooks/` — git hooks; enable with `git config core.hooksPath .githooks`.

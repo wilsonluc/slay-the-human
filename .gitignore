@@ -1,0 +1,12 @@
+# Reference material scraped from zhiyue/sts2-rl-agent (includes decompiled game code; never push)
+.scrape/
+
+# Game binaries and packs (Mega Crit's property; never push)
+*.dll
+*.pck
+*.pdb
+
+# .NET / Godot build output
+bin/
+obj/
+.godot/

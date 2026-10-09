@@ -13,3 +13,7 @@ obj/
 
 # Personal Claude Code settings
 .claude/settings.local.json
+
+# Decompiled game source, made by tools/decompile.sh (Mega Crit's code; never push)
+/decompiled/
+/decompiled.new/

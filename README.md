@@ -11,7 +11,7 @@ A reinforcement learning agent for **Slay the Spire 2**. It plays the game headl
 
 ## Setup
 
-You need `git`, the GitHub CLI `gh`, and [Claude Code](https://claude.com/claude-code).
+You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0), [Claude Code](https://claude.com/claude-code), and Slay the Spire 2 installed through Steam.
 
 1. Log in to GitHub: `gh auth login`.
 2. Clone and enable the repo's git hooks. The pre-push hook blocks direct pushes to `main`.
@@ -29,6 +29,7 @@ You need `git`, the GitHub CLI `gh`, and [Claude Code](https://claude.com/claude
    - `pr-reviewer` reviews each PR against its built-in standards, `STANDARDS.md` and `CLAUDE.md`, and looks for bugs.
    - `pr-addresser` works through review conversations: it checks each finding, fixes the confirmed ones, and replies to the rest.
 4. Check with `/plugin`: both plugins should show as enabled.
+5. Decompile the game: `sh tools/decompile.sh`. It checks the installed build against `GAME_VERSION.md` and writes the game's C# source to `decompiled/`. That code is Mega Crit's: it is gitignored and never committed.
 
 ## Layout
 
@@ -36,8 +37,10 @@ You need `git`, the GitHub CLI `gh`, and [Claude Code](https://claude.com/claude
 - `CONTEXT.md` — glossary of game and training terms.
 - `GAME_VERSION.md` — the game build, Godot, and .NET versions this repo targets.
 - `.githooks/` — git hooks; enable with `git config core.hooksPath .githooks`.
+- `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `decompile.test.sh` checks how it refuses bad setups.
+- `decompiled/` (gitignored, local only) — the game's C# source for the targeted build, made by `tools/decompile.sh`.
 - `specs/` — feature specs. Every feature starts as a spec; see `specs/README.md` for the process.
-- `.scrape/` (gitignored, local only) — reference material taken from [sts2-rl-agent](https://github.com/zhiyue/sts2-rl-agent): the C# bridge mod, decompiled game source, a Python simulator, and docs. See `.scrape/NOTES.md`.
+- `.scrape/` (gitignored, local only) — reference material taken from [sts2-rl-agent](https://github.com/zhiyue/sts2-rl-agent): the C# bridge mod, a Python simulator, and docs. See `.scrape/NOTES.md`.
 
 ## Credits
 

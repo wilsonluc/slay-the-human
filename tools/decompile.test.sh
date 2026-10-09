@@ -11,7 +11,7 @@ failed=0
 repo="$tmp/repo"
 mkdir -p "$repo/tools" "$tmp/bin" "$tmp/empty"
 cp "$root/tools/decompile.sh" "$repo/tools/"
-cp -r "$root/GAME_VERSION.md" "$root/nuget.config" "$root/.config" "$repo/"
+cp "$root/GAME_VERSION.md" "$repo/"
 want=$(sed -n 's/^| Slay the Spire 2 (Steam build ID) | \([0-9]*\) |.*/\1/p' "$repo/GAME_VERSION.md")
 
 # A fake reg answering only LongPathsEnabled, from $LONG_PATHS, in reg's CRLF output format.
@@ -22,6 +22,8 @@ case $2 in
 *) exit 1 ;;
 esac
 EOF
+# A fake dotnet that always fails, so a run past the checks stops at the tool restore: no network, no decompiler.
+printf '#!/bin/sh\nexit 1\n' >"$tmp/bin/dotnet"
 
 # A Steam install with two libraries: its own folder (no game) and a second one holding build 1 of the game.
 steam="$tmp/steam" lib="$tmp/library"

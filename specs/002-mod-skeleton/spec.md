@@ -1,6 +1,6 @@
 # 002: Mod skeleton
 
-Status: draft
+Status: approved
 
 ## Problem
 

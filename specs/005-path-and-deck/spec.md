@@ -1,6 +1,6 @@
 # 005: The path and the deck
 
-Status: draft
+Status: approved
 
 ## Problem
 

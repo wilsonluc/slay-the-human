@@ -26,7 +26,7 @@ agent/
     encoding.py      observation as a dict of padded arrays with presence masks; action index <-> game action; mask
     vocabulary.py    every ID and named value of the targeted build -> index; append-only, with a content hash
     vocabulary.json  the committed vocabulary, made from the game build by the mod
-    reward.py        the reward, defined once: outcome plus weighted potential-based shaping terms
+    reward.py        the reward, defined once: outcome plus weighted potential-based shaping terms (fixed weights)
   ppo/                                                                            008
     model.py         ID embeddings, per-entity network, masked pooling, pointer-style logits, masked categorical
     buffer.py        preallocated storage including action masks; GAE with truncation bootstrap; minibatches
@@ -59,4 +59,4 @@ Modular but shallow: one file per concern, with the PPO maths kept readable in p
 
 ## Deliberately left out
 
-Until a measurement asks for it: a recurrent (memory) policy, an entity transformer, running observation or reward normalisation, Gymnasium space declarations, W&B or YAML configuration, asynchronous learners, and any second algorithm.
+Until a measurement asks for it: a schedule fading the reward's shaping weights (if a term's totals dominate late in training), a recurrent (memory) policy, an entity transformer, running observation or reward normalisation, Gymnasium space declarations, W&B or YAML configuration, asynchronous learners, and any second algorithm.

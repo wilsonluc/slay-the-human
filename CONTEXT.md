@@ -17,6 +17,8 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 
 ## Agent and training
 
+- **Agent**: the Python program that makes the decisions in a run, on the other side of the bridge (`docs/protocol.md`): first the random agent (`agent/random_agent.py`), then the PPO policy trained from scratch. Never a language model.
+- **Policy**: the neural network that maps an observation to a probability for each legal action. The trained agent samples from it, or takes its best action in an evaluation.
 - **Game state**: everything the mod reads from the game at one moment.
 - **Observation**: the fixed-shape encoding of the game state that the policy receives.
 - **Decision**: a point where the game waits for a choice, such as play a card, end the turn, pick a map node, or take a reward.

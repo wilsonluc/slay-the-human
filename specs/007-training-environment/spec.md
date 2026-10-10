@@ -38,7 +38,7 @@ Observation and actions:
 
 Reward:
 
-- [ ] The reward is defined in one place and documented there: `+1` for a win, `-1` for a loss, plus shaping terms. Each shaping term is the change in a score of the state from one step to the next (potential-based, so it never changes which policy is best), and the scores fall to zero when the run ends. The scores are: floor reached as a fraction of a full run; HP as a fraction of max HP; within a combat, the fraction of the enemies' HP removed; and elites and bosses killed. Each term has its own weight, set in one place.
+- [ ] The reward is defined in one place and documented there: `+1` for a win, `-1` for a loss, plus shaping terms. Each shaping term is the change in a score of the state from one step to the next (potential-based, so it never changes which policy is best), and the scores fall to zero when the run ends. The scores are: floor reached as a fraction of a full run; HP as a fraction of max HP; within a combat, the fraction of the enemies' HP removed; and elites and bosses killed. Each term has its own weight, set in one place, chosen so the term's total over a full run stays within ±1; the return then needs no scaling.
 - [ ] Every step's reward is kept in the run's trace, split by term, and the environment reports each term's total per run, so a term the agent exploits shows up.
 
 Runs and failures:

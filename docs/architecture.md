@@ -59,4 +59,4 @@ Modular but shallow: one file per concern, with the PPO maths kept readable in p
 
 ## Deliberately left out
 
-Until a measurement asks for it: a schedule fading the reward's shaping weights (if a term's totals dominate late in training), a recurrent (memory) policy, an entity transformer, running observation or reward normalisation, Gymnasium space declarations, W&B or YAML configuration, asynchronous learners, and any second algorithm.
+Until a measurement asks for it: a schedule fading the reward's shaping weights (if a term's totals dominate late in training), a recurrent (memory) policy, an entity transformer, running observation or reward normalisation (each reward term's weight keeps its total over a run within ±1 instead), Gymnasium space declarations, W&B or YAML configuration, asynchronous learners, and any second algorithm.

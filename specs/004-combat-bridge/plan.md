@@ -42,10 +42,9 @@ AutoSlay's other handlers, its card selector, room loop and watchdog are unchang
 ## Changes
 
 - `docs/protocol.md`: the protocol.
-- `mod/Bridge.cs`: connection, handshake, decision exchange, timeouts.
+- `mod/Bridge.cs`: the agent port argument, connection, handshake, decision exchange, timeouts.
 - `mod/CombatSnapshot.cs`: state and legal actions.
 - `mod/AgentCombat.cs`: the `CombatRoomHandler.HandleAsync` prefix and turn loop.
-- `mod/RunMode.cs`: the agent port argument.
 - `mod/RunLog.cs`: sends `run_end` to the agent.
 - `agent/bridge.py`, `agent/random_agent.py`, `agent/test_bridge.py`: the agent and its tests (`python -m unittest discover agent`).
 - `tools/run.sh`: starts the agent and passes its port; the agent seed; the extended summary.

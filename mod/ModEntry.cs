@@ -17,11 +17,16 @@ public static class ModEntry
     {
         var harmony = new Harmony(Id);
         var patches = typeof(ModEntry).Assembly.GetTypes().Where(t => t.IsDefined(typeof(HarmonyPatch), false)).ToList();
+        var applied = 0;
         foreach (var patch in patches)
         {
             try
             {
-                harmony.CreateClassProcessor(patch).Patch();
+                // Patch() returns nothing for a class whose Prepare() turned it off, such as run-mode patches.
+                if (harmony.CreateClassProcessor(patch).Patch() is { Count: > 0 })
+                {
+                    applied++;
+                }
             }
             catch (Exception e)
             {
@@ -32,6 +37,6 @@ public static class ModEntry
                 throw;
             }
         }
-        Log.Info($"[{Id}] applied {patches.Count} patch classes");
+        Log.Info($"[{Id}] applied {applied} of {patches.Count} patch classes");
     }
 }

@@ -1,6 +1,6 @@
 # 003: Unattended runs
 
-Status: approved
+Status: done
 
 ## Problem
 
@@ -21,16 +21,16 @@ One command plays one full run unattended: it launches the game through Steam wi
 
 ## Acceptance criteria
 
-- [ ] With Steam running, one command run from the repo root launches the game through Steam, the game plays one full run to its end, and the command exits 0 after the game exits.
-- [ ] The command prints the run's seed, its outcome (win or loss), the floor it ended on, and the elapsed time.
-- [ ] No game window opens during the run.
-- [ ] Without a seed, each run gets a new random seed. With a seed, the run uses it. Either way, the game's own log names the printed seed as the run's seed.
-- [ ] Two runs given the same seed visit the same rooms in the same order and end with the same outcome on the same floor.
-- [ ] The game speed can be set; a full run at the default speed takes at most half the time of a run at normal speed with no window.
-- [ ] When the run makes no progress for a set time, or the game exits without finishing a run, the command stops the game and exits non-zero, saying what happened.
-- [ ] When Steam is not running, the command exits non-zero and says so, before launching anything.
-- [ ] Launching the game normally from Steam, with the mod installed, leaves AutoSlay off and the game behaves as without these changes.
-- [ ] `README.md` says how to run it.
+- [x] With Steam running, one command run from the repo root launches the game through Steam, the game plays one full run to its end, and the command exits 0 after the game exits.
+- [x] The command prints the run's seed, its outcome (win or loss), the floor it ended on, and the elapsed time.
+- [x] No game window opens during the run.
+- [x] Without a seed, each run gets a new random seed. With a seed, the run uses it. Either way, the game's own log names the printed seed as the run's seed.
+- [x] Two runs given the same seed visit the same rooms in the same order and end with the same outcome on the same floor.
+- [x] The game speed can be set; a full run at the default speed takes at most half the time of a run at normal speed with no window.
+- [x] When the run makes no progress for a set time, or the game exits without finishing a run, the command stops the game and exits non-zero, saying what happened.
+- [x] When Steam is not running, the command exits non-zero and says so, before launching anything.
+- [x] Launching the game normally from Steam, with the mod installed, leaves AutoSlay off and the game behaves as without these changes.
+- [x] `README.md` says how to run it.
 
 ## Open questions
 

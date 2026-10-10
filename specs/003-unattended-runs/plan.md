@@ -6,11 +6,11 @@
 
 **Starting the run.** In run mode, when the main menu is ready, the mod starts the game's own `AutoSlayer` (`new AutoSlayer().Start(...)`). No `IsReleaseGame` patch is needed: the game's `--autoslay` path only does the same thing. AutoSlay clicks through the menus, plays the run, and quits the game when the run ends (exit code 0, or 1 when it fails).
 
-**The seed.** AutoSlay's own seed only drives its choices; the run's seed comes from the character screen. In run mode a prefix on `NGame.StartNewSingleplayerRun` replaces the `seed` argument with the run's seed: the one in `--slay-the-human-seed=<seed>`, or else a new one from the game's `SeedHelper.GetRandomSeed()`. The same seed is passed to `AutoSlayer.Start`, so AutoSlay's choices repeat too. The prefix also sets `shouldSave: false`, so runs leave no save files or run history behind.
+**The seed.** AutoSlay's own seed only drives its choices; the run's seed, its acts and a random character are all derived from the seed the lobby passes to `StartRunLobby.BeginRunLocally`. In run mode a prefix there replaces it with the run's seed: the one in `--slay-the-human-seed=<seed>`, or else a new one from the game's `SeedHelper.GetRandomSeed()`. The same seed is passed to `AutoSlayer.Start`, so AutoSlay's choices repeat too. A prefix on `NGame.StartNewSingleplayerRun` sets `shouldSave: false`, so runs leave no save files or run history behind.
 
 **What the mod logs.** In run mode, lines starting `[SlayTheHuman]`:
 - `run start seed=<seed>` when the run starts;
-- `room act=<n> floor=<n> type=<type>` on each `RunManager.RoomEntered`;
+- `room act=<n> floor=<n> type=<type>` on each `RunManager.RoomEntered` (the map counts as a room);
 - `run end outcome=<win|loss> floor=<n>` from `RunManager.OnEnded(isVictory)`.
 
 Modded games already use a separate save profile (`modded/profileN`), skip metrics upload, and award no achievements, so run mode never touches the player's own profile.
@@ -22,13 +22,13 @@ Modded games already use a separate save profile (`modded/profileN`), skip metri
 4. Watches that log. No new `[SlayTheHuman]` or AutoSlay line for 120 seconds of real time, or the game exiting before `run end`, makes it stop the game and exit 1 with the reason.
 5. On `run end`, waits for the game to exit, then prints the seed, outcome, floor and elapsed time, and exits 0.
 
-**Speed.** The default `--time-scale` is the fastest value that still finishes runs, chosen by measuring same-seed runs. If time scale alone cannot halve the time of a normal-speed headless run, the next levers are Godot's frame limits (`--max-fps`, vsync) and any fixed real-time waits the profile shows.
+**Speed.** Godot's `--time-scale`, default 20. Measured on seed `TEST1`: 452 seconds at 1, 220 at 10, 209 at 20, with the same rooms and cards at every speed. Past about 10 the gain is small; the remaining time is likely fixed real-time waits and frame waits, for a later spec.
 
 ## Changes
 
 - `mod/RunMode.cs`: the `--slay-the-human-run` and `--slay-the-human-seed` arguments, and the run's seed.
 - `mod/StartAutoSlay.cs`: starts AutoSlay when the main menu is ready, in run mode.
-- `mod/SeedRun.cs`: the `StartNewSingleplayerRun` prefix.
+- `mod/SeedRun.cs`: the `BeginRunLocally` seed prefix and the `StartNewSingleplayerRun` no-save prefix.
 - `mod/RunLog.cs`: the `run start`, `room` and `run end` lines.
 - `tools/game.sh`: lets a script add its own options.
 - `tools/run.sh`: the command.

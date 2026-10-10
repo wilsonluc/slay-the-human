@@ -1,6 +1,6 @@
 #!/bin/sh
-# Checks how tools/decompile.sh refuses to run, with a fake registry and a fake Steam install. Needs no game.
-#   sh tools/decompile.test.sh
+# Checks how the scripts in tools/ refuse to run, with a fake registry, dotnet and Steam install. Needs no game.
+#   sh tools/test.sh
 set -u
 root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
@@ -10,7 +10,7 @@ failed=0
 # A copy of the repo, so no run touches the real decompiled/.
 repo="$tmp/repo"
 mkdir -p "$repo/tools" "$tmp/bin" "$tmp/empty"
-cp "$root/tools/decompile.sh" "$repo/tools/"
+cp "$root/tools/decompile.sh" "$root/tools/game.sh" "$root/tools/mod.sh" "$repo/tools/"
 cp "$root/GAME_VERSION.md" "$repo/"
 want=$(sed -n 's/^| Slay the Spire 2 (Steam build ID) | \([0-9]*\) |.*/\1/p' "$repo/GAME_VERSION.md")
 
@@ -22,7 +22,7 @@ case $2 in
 *) exit 1 ;;
 esac
 EOF
-# A fake dotnet that always fails, so a run past the checks stops at the tool restore: no network, no decompiler.
+# A fake dotnet that always fails, so a run past the checks stops at its first dotnet call: no network, no decompiler.
 printf '#!/bin/sh\nexit 1\n' >"$tmp/bin/dotnet"
 
 # A Steam install with two libraries: its own folder (no game) and a second one holding build 1 of the game.
@@ -37,11 +37,11 @@ printf '"AppState"\r\n{\r\n\t"appid"\t\t"2868840"\r\n\t"installdir"\t\t"Slay the
 mkdir "$repo/decompiled"
 echo old >"$repo/decompiled/BUILD"
 
-# run <long paths> <steam dir> [args]: sets $out and $code.
+# run <script> <long paths> <steam dir> [args]: sets $out and $code.
 run() {
-  long=$1 dir=$2
-  shift 2
-  out=$(LONG_PATHS=$long STEAM_DIR=$dir PATH="$tmp/bin:$PATH" sh "$repo/tools/decompile.sh" "$@" 2>&1)
+  script=$1 long=$2 dir=$3
+  shift 3
+  out=$(LONG_PATHS=$long STEAM_DIR=$dir PATH="$tmp/bin:$PATH" sh "$repo/tools/$script.sh" "$@" 2>&1)
   code=$?
 }
 check() { # check <name> <condition...>
@@ -52,20 +52,30 @@ check() { # check <name> <condition...>
 has() { case $out in *"$1"*) return 0 ;; esac; return 1; }
 untouched() { [ "$(cat "$repo/decompiled/BUILD")" = old ] && [ ! -e "$repo/decompiled.new/BUILD" ]; }
 
-run 0x0 "$steam"
+run decompile 0x0 "$steam"
 check 'long paths off' eval '[ $code = 1 ] && has "long paths are off" && has LongPathsEnabled'
 
-run 0x1 "$tmp/empty"
+run decompile 0x1 "$tmp/empty"
 check 'Steam not found' eval '[ $code = 1 ] && has "Steam not found" && has STEAM_DIR'
 
-run 0x1 "$steam"
+run decompile 0x1 "$steam"
 check 'build mismatch' eval '[ $code = 1 ] && has "installed build 1" && has "targets $want" && has --any-build && untouched'
 
-run 0x1 "$steam" --any-build
+run decompile 0x1 "$steam" --any-build
 check '--any-build passes the check' eval 'has "Decompiling build 1" && ! has "targets"'
 check 'failed decompile keeps decompiled/' untouched
 
-run 0x1 "$steam" --bogus
+run decompile 0x1 "$steam" --bogus
 check 'unknown flag' eval '[ $code = 2 ] && has usage'
+
+run mod 0x1 "$steam"
+check 'mod: build mismatch installs nothing' eval '[ $code = 1 ] && has "installed build 1" && has "targets $want" && [ ! -e "$lib/steamapps/common/Slay the Spire 2/mods" ]'
+
+run mod 0x1 "$steam" --any-build
+check 'mod: --any-build passes the check' eval 'has "Building SlayTheHuman for build 1" && ! has "targets"'
+
+# The game reads only snake_case manifest keys and silently skips the DLL without "has_dll": true.
+out=$(tr -d ' \r\n' <"$root/mod/SlayTheHuman.json") code=-
+check 'mod: manifest loads the DLL and no PCK' eval 'has "\"has_dll\":true" && has "\"has_pck\":false"'
 
 exit $failed

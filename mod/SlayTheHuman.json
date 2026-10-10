@@ -1,0 +1,10 @@
+{
+  "id": "SlayTheHuman",
+  "name": "Slay the Human",
+  "author": "slay-the-human",
+  "description": "Lets a reinforcement learning agent play the game. https://github.com/wilsonluc/slay-the-human",
+  "version": "0.1.0",
+  "has_dll": true,
+  "has_pck": false,
+  "affects_gameplay": true
+}

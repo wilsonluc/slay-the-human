@@ -30,6 +30,8 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
    - `pr-addresser` works through review conversations: it checks each finding, fixes the confirmed ones, and replies to the rest.
 4. Check with `/plugin`: both plugins should show as enabled.
 5. Decompile the game: `sh tools/decompile.sh`. It checks the installed build against `GAME_VERSION.md` and writes the game's C# source to `decompiled/`. That code is Mega Crit's: it is gitignored and never committed.
+6. Build and install the mod, with the game closed: `sh tools/mod.sh`. It builds `mod/` against the game's own assemblies and installs it into the game's `mods/SlayTheHuman/` folder.
+7. The first time, start the game and answer **Yes** to its mods warning. The game saves the answer and quits. From the next start, it loads the mod, and `%APPDATA%\SlayTheSpire2\logs\godot.log` shows lines starting `[SlayTheHuman]`.
 
 ## Layout
 
@@ -37,7 +39,8 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 - `CONTEXT.md` — glossary of game and training terms.
 - `GAME_VERSION.md` — the game build, Godot, and .NET versions this repo targets.
 - `.githooks/` — git hooks; enable with `git config core.hooksPath .githooks`.
-- `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `decompile.test.sh` checks how it refuses bad setups.
+- `mod/` — the C# mod the game loads: its project, its manifest (`SlayTheHuman.json`) and its Harmony patches.
+- `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `mod.sh` builds and installs the mod; `game.sh` finds the game for both; `test.sh` checks how they refuse bad setups.
 - `decompiled/` (gitignored, local only) — the game's C# source for the targeted build, made by `tools/decompile.sh`.
 - `specs/` — feature specs. Every feature starts as a spec; see `specs/README.md` for the process.
 - `.scrape/` (gitignored, local only) — reference material taken from [sts2-rl-agent](https://github.com/zhiyue/sts2-rl-agent): the C# bridge mod, a Python simulator, and docs. See `.scrape/NOTES.md`.

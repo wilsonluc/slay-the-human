@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The mod the game loads from mods/SlayTheHuman/. Build and install it with tools/mod.sh, which sets GameDataDir. -->
+  <PropertyGroup>
+    <!-- The game runs on its own .NET 9 runtime (see GAME_VERSION.md). -->
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>SlayTheHuman</AssemblyName>
+    <RootNamespace>SlayTheHuman</RootNamespace>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <Target Name="CheckGameDataDir" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(GameDataDir)/sts2.dll')">
+    <Error Text="GameDataDir must be the game's data_sts2_windows_x86_64 folder, the one holding sts2.dll. Build with tools/mod.sh." />
+  </Target>
+
+  <!-- The game's own assemblies, referenced in place: Private=false keeps them out of the build output. -->
+  <ItemGroup>
+    <Reference Include="sts2" HintPath="$(GameDataDir)/sts2.dll" Private="false" />
+    <Reference Include="GodotSharp" HintPath="$(GameDataDir)/GodotSharp.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GameDataDir)/0Harmony.dll" Private="false" />
+  </ItemGroup>
+</Project>

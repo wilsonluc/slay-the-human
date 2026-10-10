@@ -85,6 +85,14 @@ check 'run: bad seed' eval '[ $code = 1 ] && has "letters and digits only"'
 run run 0x1 "$steam" --any-build --bogus
 check 'run: unknown option' eval '[ $code = 2 ] && has "--seed=<seed>"'
 
+# docs/protocol.md is the protocol's single definition; the mod and the agent must use its version.
+doc_version=$(sed -n 's/^Protocol version: \*\*\([0-9]*\)\*\*$/\1/p' "$root/docs/protocol.md")
+mod_version=$(sed -n 's/.*public const int Protocol = \([0-9]*\);.*/\1/p' "$root/mod/Bridge.cs")
+agent_version=$(sed -n 's/^PROTOCOL = \([0-9]*\)$/\1/p' "$root/agent/bridge.py")
+out="doc=$doc_version mod=$mod_version agent=$agent_version" code=-
+check 'protocol: mod and agent use the version in docs/protocol.md' \
+  eval '[ -n "$doc_version" ] && [ "$mod_version" = "$doc_version" ] && [ "$agent_version" = "$doc_version" ]'
+
 # The game reads only snake_case manifest keys and silently skips the DLL without "has_dll": true.
 out=$(tr -d ' \r\n' <"$root/mod/SlayTheHuman.json") code=-
 check 'mod: manifest loads the DLL and no PCK' eval 'has "\"has_dll\":true" && has "\"has_pck\":false"'

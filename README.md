@@ -35,17 +35,20 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 
 ## Unattended runs
 
-With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It launches the game through Steam with no window and at 20x game speed, the game's built-in AutoSlay bot plays (a stand-in until the agent can), and it prints one line:
+With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It starts the random Python agent (`agent/random_agent.py`, Python 3.13, standard library only), then launches the game through Steam with no window and at 20x game speed. The agent makes every combat decision over the bridge described in `docs/protocol.md`, and the mod plays its choices the way a player would. Outside combat, the game's built-in AutoSlay bot still decides. It prints one line:
 
 ```
-seed=TEST1 outcome=win floor=48 seconds=209 log=runs/20261010-141133.log
+seed=TEST1 outcome=loss floor=2 seconds=31 agent_seed=1 decisions=41 per_second=7.8 log=runs/20261010-150133.log
 ```
 
-- `--seed=<seed>` replays a run: the same seed visits the same rooms and plays the same cards. Without it, each run gets a new random seed.
+- `--seed=<seed>` and `--agent-seed=<n>` replay a run: the same pair visits the same rooms and makes the same decisions. Without them, each run gets new random seeds.
 - `--time-scale=<n>` sets the game speed (default 20; past about 10 the gain is small).
-- The run's full game log is kept in `runs/` (gitignored). If the run stops making progress for 120 seconds (`STALL_SECONDS`), or the game exits before the run ends, the command stops the game and exits 1 with the reason.
+- The run's game log, the agent's output and a trace of every decision and choice (`.trace.jsonl`) are kept in `runs/` (gitignored).
+- The run ends as an error, and the command exits 1 with the reason, if the agent picks an action that is not listed, does not answer within 30 seconds, disconnects, or speaks another protocol version; if the run stops making progress for 120 seconds (`STALL_SECONDS`); or if the game exits before the run ends. Nothing ever picks an action in the agent's place.
 - Runs use the game's separate modded profile and save nothing, so your own saves, stats and achievements are untouched.
-- A normal launch from Steam is unaffected: run mode is on only when the game is started by this command.
+- A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started by this command.
+
+Run the agent's tests with `python -m unittest discover agent`, and the tools' with `sh tools/test.sh`.
 
 ## Layout
 
@@ -53,7 +56,9 @@ seed=TEST1 outcome=win floor=48 seconds=209 log=runs/20261010-141133.log
 - `CONTEXT.md` — glossary of game and training terms.
 - `GAME_VERSION.md` — the game build, Godot, and .NET versions this repo targets.
 - `.githooks/` — git hooks; enable with `git config core.hooksPath .githooks`.
-- `mod/` — the C# mod the game loads: its project, its manifest (`SlayTheHuman.json`) and its Harmony patches.
+- `mod/` — the C# mod the game loads: its project, its manifest (`SlayTheHuman.json`), its Harmony patches and its side of the bridge.
+- `agent/` — the Python side of the bridge (`bridge.py`), the random agent, and their tests.
+- `docs/protocol.md` — the messages between the mod and the agent.
 - `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `mod.sh` builds and installs the mod; `run.sh` plays an unattended run; `game.sh` finds the game for all three; `test.sh` checks how they refuse bad setups.
 - `decompiled/` (gitignored, local only) — the game's C# source for the targeted build, made by `tools/decompile.sh`.
 - `specs/` — feature specs. Every feature starts as a spec; see `specs/README.md` for the process.

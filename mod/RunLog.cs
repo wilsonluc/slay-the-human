@@ -34,7 +34,8 @@ internal static class RunLog
             return;
         }
         _ended = true;
-        var floor = __instance.DebugOnlyGetState()?.TotalFloor;
+        var floor = __instance.DebugOnlyGetState()?.TotalFloor ?? 0;
         Log.Info($"[{ModEntry.Id}] run end outcome={(isVictory ? "win" : "loss")} floor={floor}");
+        Bridge.SendRunEnd(isVictory, floor);
     }
 }

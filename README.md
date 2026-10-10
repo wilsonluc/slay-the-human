@@ -48,7 +48,7 @@ seed=TEST1 outcome=loss floor=2 seconds=31 agent_seed=1 decisions=41 per_second=
 - Runs use the game's separate modded profile and save nothing, so your own saves, stats and achievements are untouched.
 - A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started by this command.
 
-Run the agent's tests with `python -m unittest discover agent`, and the tools' with `sh tools/test.sh`.
+Run the agent's tests with `python -m unittest discover agent`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
 
 ## Layout
 

@@ -1,7 +1,7 @@
 # 007: Tasks
 
 - [x] 1. `agent/` as a package with tests in `agent/tests/`, `pyproject.toml` (Python version, numpy pinned), CI installing it; README's "standard library only" replaced. Tests pass locally and in CI.
-- [ ] 2. Game copy: `tools/copy-game.sh`, `games.py` (hash, refusal, direct launch with the app ID, Steam check), `mod.sh` installs into the copy, `GAME_VERSION.md` rows, `/games/` gitignored. `test_games` passes; a copy launched by `games.py` reaches the main menu.
+- [x] 2. Game copy: `tools/copy-game.sh`, `games.py` (hash, refusal, direct launch with the app ID, Steam check), `mod.sh` installs into the copy, `GAME_VERSION.md` rows, `/games/` gitignored. `test_games` passes; a copy launched by `games.py` reaches the main menu.
 - [ ] 3. Protocol 4 connection: `hello` with game version, `ready`/`start`, `run_end` per run, one connection; `RunLoop.cs` (no quit after a run that ended normally, per-run resets, room handler once); `bridge.py`; the random agent playing R runs on one game; `tools/run.sh` and its checks removed. `test_bridge` passes; 10 runs in one process.
 - [ ] 4. Unlocks and profile: lobby and player unlock prefixes, the fixed in-memory profile, no progress writes, the run-start check. `unlocks=all` in every run; profile folder hash unchanged after 10 runs; one seed played first and after three others gives identical traces.
 - [ ] 5. No time limits: no answer timeout, `Wait.Until` logs instead of throwing, AutoSlay's deadlines and watchdog off. A run with 6-minute pauses before 5 actions completes.

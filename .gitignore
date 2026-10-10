@@ -25,3 +25,4 @@ obj/
 __pycache__/
 .claude/worktrees/
 *.egg-info/
+/games/

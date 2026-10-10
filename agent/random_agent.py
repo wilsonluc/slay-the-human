@@ -4,8 +4,8 @@
                                  [--think-seconds T --think-count C] [--time-scale X] [--game-command CMD]
     python -m agent.random_agent --replay runs/<time>/summary.jsonl --row I
 
-Launches N games from the game copy (one environment each, start-ups staggered) and plays R runs in all across them,
-one thread per game. Prints seed=<n> first, a line per run, then steps per second (per game and in total), runs per
+Launches N games from the game copy (one environment each, start-ups staggered) and plays R runs in all, shared
+equally between them, one thread per game. Prints seed=<n> first, a line per run, then steps per second (per game and in total), runs per
 hour, the mean and largest floor, and the largest size seen of each observation set. Each run's choices depend only on
 the agent seed and that run's game seed, so a run replays the same wherever it falls. --think-seconds T --think-count C
 sleeps T seconds before each of the first C actions, to check the game waits. --replay plays a summary row's seed and
@@ -106,16 +106,12 @@ def main() -> int:
                              time_scale=args.time_scale,
                              game_command=shlex.split(args.game_command) if args.game_command else None)
     launched = time.monotonic()
-    lock, left, results, errors = threading.Lock(), [args.runs], [], []
+    lock, results, errors = threading.Lock(), [], []
     think = Think(args.think_seconds, args.think_count)
 
-    def worker(env: Environment) -> None:
+    def worker(env: Environment, runs: int) -> None:
         try:
-            while True:
-                with lock:
-                    if left[0] == 0:
-                        return
-                    left[0] -= 1
+            for _ in range(runs):
                 result = play(env, seed, think)
                 with lock:
                     results.append(result)
@@ -124,7 +120,9 @@ def main() -> int:
         except Exception as e:  # reported below; the other games finish their runs
             errors.append(f"{env.name}: {type(e).__name__}: {e}")
 
-    threads = [threading.Thread(target=worker, args=(env,)) for env in envs]
+    # Each game plays a fixed share of the runs, so the same seed plays the same runs however the threads interleave.
+    shares = [args.runs // args.games + (i < args.runs % args.games) for i in range(args.games)]
+    threads = [threading.Thread(target=worker, args=(env, share)) for env, share in zip(envs, shares)]
     for thread in threads:
         thread.start()
     for thread in threads:

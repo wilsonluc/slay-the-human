@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,10 +82,20 @@ internal static class SelectionPurpose
         ["TO_ENCHANT"] = "enchant", ["TO_DISCARD"] = "discard", ["TO_EXHAUST"] = "exhaust",
     };
 
-    /// <summary>For each entry point's state machine type: its purpose and its prefs field, when it has one.</summary>
-    private static readonly Dictionary<Type, (string Purpose, FieldInfo? Prefs)> Machines = new();
+    /// <summary>
+    /// Entry points that only pass through to another one (FromHandForDiscard awaits FromHand), which then keeps their
+    /// purpose rather than its own.
+    /// </summary>
+    private static readonly HashSet<string> PassThrough = new() { "FromHandForDiscard" };
+
+    /// <summary>For each entry point's state machine type: its purpose, its prefs field and its state field.</summary>
+    private static readonly Dictionary<Type, (string Purpose, FieldInfo? Prefs, FieldInfo State, bool PassThrough)> Machines = new();
 
     private static string? _last;
+    private static string? _handedDown;
+
+    /// <summary>The purpose a pass-through handed to an entry point, kept for each of its later steps.</summary>
+    private static readonly ConditionalWeakTable<object, string> Inherited = new();
 
     private static bool Prepare() => RunMode.WithAgent;
 
@@ -95,16 +106,38 @@ internal static class SelectionPurpose
         {
             var moveNext = AccessTools.AsyncMoveNext(method)
                 ?? throw new InvalidOperationException($"CardSelectCmd.{method.Name} is no longer async");
-            Machines[moveNext.DeclaringType!] = (EntryPurposes[method.Name], AccessTools.Field(moveNext.DeclaringType, "prefs"));
+            var machine = moveNext.DeclaringType!;
+            Machines[machine] = (EntryPurposes[method.Name], AccessTools.Field(machine, "prefs"),
+                AccessTools.Field(machine, "<>1__state")
+                    ?? throw new InvalidOperationException($"no state field on {machine.Name}"),
+                PassThrough.Contains(method.Name));
             yield return moveNext;
         }
     }
 
     private static void Prefix(object __instance)
     {
-        var (purpose, prefs) = Machines[__instance.GetType()];
+        var (purpose, prefs, state, passThrough) = Machines[__instance.GetType()];
+        // A state machine's first step has state -1; later steps resume after an await.
+        var starting = (int)state.GetValue(__instance)! == -1;
         var prompt = prefs?.GetValue(__instance) is CardSelectorPrefs { Prompt: { } text } ? text.LocEntryKey : null;
-        _last = prompt is not null && PromptPurposes.TryGetValue(prompt, out var fromPrompt) ? fromPrompt : purpose;
+        var fromPrompt = prompt is not null ? PromptPurposes.GetValueOrDefault(prompt) : null;
+        if (passThrough)
+        {
+            // Hand the purpose to the entry point it starts straight away; only on its first step, so a wrapper
+            // resuming later cannot pass a stale purpose to an unrelated selection.
+            if (starting)
+            {
+                _handedDown = fromPrompt ?? purpose;
+            }
+            return;
+        }
+        if (starting && _handedDown is not null)
+        {
+            Inherited.AddOrUpdate(__instance, _handedDown);
+            _handedDown = null;
+        }
+        _last = fromPrompt ?? (Inherited.TryGetValue(__instance, out var inherited) ? inherited : purpose);
     }
 
     /// <summary>The purpose of the selection being asked for, or "other" when it came through no entry point.</summary>

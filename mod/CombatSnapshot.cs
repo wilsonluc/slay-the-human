@@ -8,14 +8,13 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace SlayTheHuman;
 
 /// <summary>
-/// A combat decision (docs/protocol.md): the combat state, the legal actions, and how to carry out each the way the
-/// game's own UI does.
+/// A combat decision (docs/protocol.md): the combat state (<see cref="GameState.Combat"/>), the legal actions, and how
+/// to carry out each the way the game's own UI does.
 /// </summary>
 internal static class CombatSnapshot
 {
@@ -25,37 +24,7 @@ internal static class CombatSnapshot
         var me = player.Creature;
         var enemies = me.CombatState?.Enemies ?? throw new InvalidOperationException("no combat state");
         var hand = combat.Hand.Cards;
-        var decision = new Decision("combat");
-
-        decision.State["turn"] = combat.TurnNumber;
-        decision.State["player"] = new JsonObject
-        {
-            ["hp"] = me.CurrentHp, ["max_hp"] = me.MaxHp, ["block"] = me.Block,
-            ["energy"] = combat.Energy, ["max_energy"] = combat.MaxEnergy, ["stars"] = combat.Stars,
-            ["powers"] = Powers(me),
-        };
-        decision.State["hand"] = new JsonArray(hand.Select(card => (JsonNode)new JsonObject
-        {
-            ["id"] = card.Id.Entry,
-            ["upgraded"] = card.IsUpgraded,
-            ["cost"] = card.EnergyCost.GetWithModifiers(CostModifiers.All),
-            ["costs_x"] = card.EnergyCost.CostsX,
-            ["star_cost"] = card.GetStarCostWithModifiers(),
-            ["type"] = card.Type.ToString(),
-            ["target"] = card.TargetType.ToString(),
-            ["playable"] = card.CanPlay(out _, out _),
-        }).ToArray());
-        decision.State["draw"] = combat.DrawPile.Cards.Count;
-        decision.State["discard"] = combat.DiscardPile.Cards.Count;
-        decision.State["exhaust"] = combat.ExhaustPile.Cards.Count;
-        decision.State["enemies"] = new JsonArray(enemies.Select(enemy => (JsonNode)new JsonObject
-        {
-            ["id"] = enemy.Monster?.Id.Entry,
-            ["alive"] = enemy.IsAlive,
-            ["hp"] = enemy.CurrentHp, ["max_hp"] = enemy.MaxHp, ["block"] = enemy.Block,
-            ["powers"] = Powers(enemy),
-            ["intents"] = Intents(enemy),
-        }).ToArray());
+        var decision = new Decision("combat", GameState.Combat() ?? throw new InvalidOperationException("no combat in progress"));
 
         for (var i = 0; i < hand.Count; i++)
         {
@@ -137,28 +106,4 @@ internal static class CombatSnapshot
              !CombatManager.Instance.PlayerActionsDisabled);
     }
 
-    private static JsonArray Powers(Creature creature) => new(creature.Powers
-        .Where(power => power.IsVisible)
-        .Select(power => (JsonNode)new JsonObject { ["id"] = power.Id.Entry, ["amount"] = power.Amount })
-        .ToArray());
-
-    private static JsonArray Intents(Creature enemy)
-    {
-        if (!enemy.IsAlive || enemy.Monster is null)
-        {
-            return new JsonArray();
-        }
-        return new JsonArray(enemy.Monster.NextMove.Intents.Select(intent => (JsonNode)(intent switch
-        {
-            // A hidden intent shows the player nothing, so it gives the agent nothing either.
-            HiddenIntent => new JsonObject { ["type"] = "Hidden", ["damage"] = null, ["hits"] = null },
-            AttackIntent attack => new JsonObject
-            {
-                ["type"] = attack.IntentType.ToString(),
-                ["damage"] = attack.GetSingleDamage(Array.Empty<Creature>(), enemy),
-                ["hits"] = attack.Repeats,
-            },
-            _ => new JsonObject { ["type"] = intent.IntentType.ToString(), ["damage"] = null, ["hits"] = null },
-        })).ToArray());
-    }
 }

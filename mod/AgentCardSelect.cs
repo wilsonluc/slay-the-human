@@ -42,7 +42,7 @@ internal static class AgentCardSelect
         var state = new JsonObject
         {
             ["purpose"] = purpose, ["min"] = min, ["max"] = most,
-            ["cards"] = new JsonArray(cards.Select(card => (JsonNode)Decision.Card(card)).ToArray()),
+            ["cards"] = new JsonArray(cards.Select(card => (JsonNode)GameState.Card(card)).ToArray()),
         };
         var indices = await Bridge.AskIndicesAsync(Decision.WithRun("card_select", state), cards.Count, min, most,
             CancellationToken.None);
@@ -98,6 +98,13 @@ internal static class SelectionPurpose
     private static readonly ConditionalWeakTable<object, string> Inherited = new();
 
     private static bool Prepare() => RunMode.WithAgent;
+
+    /// <summary>At each run's start, so a purpose from the last run never reaches this one.</summary>
+    public static void Reset()
+    {
+        _last = null;
+        _handedDown = null;
+    }
 
     private static IEnumerable<MethodBase> TargetMethods()
     {

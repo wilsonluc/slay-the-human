@@ -6,7 +6,7 @@ using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
 namespace SlayTheHuman;
 
 /// <summary>
-/// In run mode, selects the character the command asked for (<see cref="RunMode.Character"/>) whenever a character
+/// In run mode, selects the character the agent asked for (<see cref="RunMode.Character"/>) whenever a character
 /// button is selected, instead of the one AutoSlay drew at random.
 /// </summary>
 [HarmonyPatch(typeof(NCharacterSelectButton), nameof(NCharacterSelectButton.Select))]

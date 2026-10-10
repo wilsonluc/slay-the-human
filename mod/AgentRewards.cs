@@ -26,7 +26,7 @@ namespace SlayTheHuman;
 [HarmonyPatch(typeof(RewardsScreenHandler), nameof(RewardsScreenHandler.HandleAsync))]
 internal static class AgentRewards
 {
-    private static readonly TimeSpan ClaimTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan ClaimTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ChildTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(10);
 
@@ -87,23 +87,45 @@ internal static class AgentRewards
     /// <summary>Takes a reward. A card reward opens its own screen, which is waited out here.</summary>
     private static async Task TakeAsync(NRewardsScreen screen, NRewardButton button, CancellationToken ct)
     {
-        await UiHelper.Click(button);
-        // A claimed reward leaves the screen. One the game gives back (a skipped card reward) stays.
-        await Wait.For(() => !GodotObject.IsInstanceValid(button) || !button.IsVisibleInTree() ||
-            NOverlayStack.Instance?.Peek() != screen, ClaimTimeout, ct);
-        if (!Alive(screen))
+        // The button says when the reward is settled: claimed, or given back (a card reward whose cards were skipped).
+        var settled = false;
+        void OnSettled(NRewardButton _) => settled = true;
+        button.RewardClaimed += OnSettled;
+        button.RewardSkipped += OnSettled;
+        try
         {
-            // Taking the last reward can close the screen; what is on top now was underneath it.
-            return;
+            await UiHelper.Click(button);
+            await Wait.Until(() => settled || NOverlayStack.Instance?.Peek() != screen, ClaimTimeout,
+                "the reward to be claimed or open its screen", ct);
+            if (NOverlayStack.Instance?.Peek() is NCardRewardSelectionScreen cardScreen)
+            {
+                await Wait.Until(() => !GodotObject.IsInstanceValid(cardScreen) || !cardScreen.IsVisibleInTree(),
+                    ChildTimeout, "the card reward screen to close", ct);
+            }
+            else if (NOverlayStack.Instance?.Peek() is NChooseABundleSelectionScreen bundles)
+            {
+                // A reward that offers bundles of cards (such as a pack) asks the bundle decision.
+                await AgentBundle.ChooseAsync(bundles, ct);
+            }
+            else if (NOverlayStack.Instance?.Peek() is NRewardsScreen nested && nested != screen)
+            {
+                // A reward that grants more rewards opens a rewards screen of its own.
+                await ChooseAsync(nested, ct);
+                await Wait.Until(() => !Alive(nested), ChildTimeout, "the inner rewards screen to close", ct);
+            }
+            else if (!settled && Alive(screen) && NOverlayStack.Instance?.Peek() is { } other && other != screen)
+            {
+                throw new InvalidOperationException($"a reward opened a screen the agent cannot answer: {other.GetType().Name}");
+            }
+            await Wait.Until(() => settled, ClaimTimeout, "the reward to be claimed or given back", ct);
         }
-        if (NOverlayStack.Instance?.Peek() is NCardRewardSelectionScreen cardScreen)
+        finally
         {
-            await Wait.Until(() => !GodotObject.IsInstanceValid(cardScreen) || !cardScreen.IsVisibleInTree(),
-                ChildTimeout, "the card reward screen to close", ct);
-        }
-        else if (NOverlayStack.Instance?.Peek() is { } other && other != screen)
-        {
-            throw new InvalidOperationException($"a reward opened a screen the agent cannot answer: {other.GetType().Name}");
+            if (GodotObject.IsInstanceValid(button))
+            {
+                button.RewardClaimed -= OnSettled;
+                button.RewardSkipped -= OnSettled;
+            }
         }
     }
 
@@ -134,6 +156,7 @@ internal static class AgentRewards
         return new JsonObject
         {
             ["type"] = type, ["id"] = id, ["amount"] = amount, ["group"] = group >= 0 ? group : null,
+            ["card"] = reward is SpecialCardReward card && SpecialCard(card) is { } model ? GameState.Card(model) : null,
         };
     }
 }

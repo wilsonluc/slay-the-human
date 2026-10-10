@@ -41,7 +41,7 @@ internal static class AgentCardReward
         var cards = Options(screen) ?? Array.Empty<CardCreationResult>();
         var alternatives = Extra(screen) ?? Array.Empty<CardRewardAlternative>();
         var decision = new Decision("card_reward");
-        decision.State["cards"] = new JsonArray(cards.Select(option => (JsonNode)Decision.Card(option.Card)).ToArray());
+        decision.State["cards"] = new JsonArray(cards.Select(option => (JsonNode)GameState.Card(option.Card)).ToArray());
         decision.State["alternatives"] = new JsonArray(alternatives.Select(option => (JsonNode)option.OptionId).ToArray());
         int? chosen = null;
         for (var i = 0; i < cards.Count; i++)

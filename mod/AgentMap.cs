@@ -49,18 +49,10 @@ internal static class AgentMap
         }, ScreenTimeout, "a travelable map point", ct);
 
         var run = RunManager.Instance.DebugOnlyGetState() ?? throw new InvalidOperationException("no run in progress");
-        var points = AllPoints(run.Map);
-        var index = points.Select((point, i) => (point.coord, i)).ToDictionary(pair => pair.coord, pair => pair.i);
+        // The map is in every decision's state (GameState.Map); travel actions index its points.
+        var index = GameState.MapPoints(run.Map).Select((point, i) => (point.coord, i))
+            .ToDictionary(pair => pair.coord, pair => pair.i);
         var decision = new Decision("map");
-        decision.State["points"] = new JsonArray(points.Select(point => (JsonNode)new JsonObject
-        {
-            ["col"] = point.coord.col, ["row"] = point.coord.row, ["type"] = point.PointType.ToString(),
-        }).ToArray());
-        decision.State["edges"] = new JsonArray(points.SelectMany(point => point.Children
-                .Where(child => index.ContainsKey(child.coord))
-                .Select(child => (JsonNode)new JsonArray(index[point.coord], index[child.coord])))
-            .ToArray());
-        decision.State["current"] = run.CurrentMapCoord is { } here && index.TryGetValue(here, out var at) ? at : null;
         foreach (var target in travelable)
         {
             if (index.TryGetValue(target.Point.coord, out var pointIndex))
@@ -69,19 +61,6 @@ internal static class AgentMap
             }
         }
         await decision.RunAsync(ct);
-    }
-
-    /// <summary>Every point of the act's map: the grid, the start and the boss (or bosses).</summary>
-    private static List<MapPoint> AllPoints(ActMap map)
-    {
-        var points = new List<MapPoint> { map.StartingMapPoint };
-        points.AddRange(map.GetAllMapPoints());
-        points.Add(map.BossMapPoint);
-        if (map.SecondBossMapPoint is { } second)
-        {
-            points.Add(second);
-        }
-        return points.DistinctBy(point => point.coord).ToList();
     }
 
     private static async Task TravelAsync(NMapPoint target, CancellationToken ct)

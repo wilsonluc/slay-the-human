@@ -55,7 +55,7 @@ class EnvironmentTest(unittest.TestCase):
         env = self.env()
         obs, info = env.reset(seed="abcio")
         self.assertEqual(info["seed"], "ABC10", "the seed as the game reads it")
-        self.assertEqual(set(info), {"seed", "floor", "kind", "outcome", "outcome_reward", "scores"})
+        self.assertEqual(set(info), {"seed", "floor", "act", "kind", "outcome", "outcome_reward", "scores"})
         self.assertEqual(env.action_masks().shape, (encoding.ACTION_COUNT,))
         steps = play(env, random.Random(1))
         rewards, terminated, truncated, last = steps[-1]

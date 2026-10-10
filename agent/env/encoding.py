@@ -11,6 +11,8 @@ mask marks exactly the legal ones. A card selection is played as single picks: e
 the observation, and the environment sends the picks once confirmed or at the maximum.
 """
 
+import hashlib
+import json
 from collections import deque
 
 import numpy as np
@@ -72,6 +74,47 @@ HAND_FLOATS = 9  # cost, X cost, star cost, playable, damage, block and magic af
 GLOBAL_FLOATS = 22
 ROUTE_FLOATS = 8
 
+# Raised whenever a scaling rule or a feature changes without changing a shape, so the schema hash changes with it.
+SCHEMA_REVISION = 1
+
+
+def _set(name: str, size: int, ids: int | None = None, floats: int | None = None) -> dict:
+    """A set's arrays: IDs (one per entity, or ids per entity), numbers (floats per entity) and the presence mask."""
+    shapes = {f"{name}_ids": ((size,) if ids is None else (size, ids), "int64")}
+    if floats is not None:
+        shapes[name] = ((size,) if floats == 0 else (size, floats), "float32")
+    shapes[f"{name}_present"] = ((size,), "float32")
+    return shapes
+
+
+# Every observation key, with its shape and dtype.
+OBSERVATION: dict[str, tuple[tuple[int, ...], str]] = {
+    **_set("deck", DECK, 5, CARD_FLOATS),
+    **_set("relics", RELICS, None, 2),
+    **_set("potions", POTIONS, 2),
+    **_set("map", MAP, None, 4 + ROUTE_FLOATS),
+    **_set("hand", HAND, 5, CARD_FLOATS + HAND_FLOATS),
+    **_set("draw", PILE, 5, CARD_FLOATS),
+    **_set("discard", PILE, 5, CARD_FLOATS),
+    **_set("exhaust", PILE, 5, CARD_FLOATS),
+    **_set("player_powers", POWERS, None, 0),
+    **_set("enemies", ENEMIES, None, 3),
+    "enemy_powers_ids": ((ENEMIES, ENEMY_POWERS), "int64"),
+    "enemy_powers": ((ENEMIES, ENEMY_POWERS), "float32"),
+    "enemy_powers_present": ((ENEMIES, ENEMY_POWERS), "float32"),
+    "intents_ids": ((ENEMIES, INTENTS), "int64"),
+    "intents": ((ENEMIES, INTENTS, 2), "float32"),
+    "intents_present": ((ENEMIES, INTENTS), "float32"),
+    **_set("rewards", REWARDS, 2, 3),
+    **_set("choices", CHOICES, 5, CARD_FLOATS + 2),
+    **_set("options", OPTIONS, 2, 4),
+    **_set("shop", SHOP, 2, 3),
+    **_set("shop_cards", SHOP, 5, CARD_FLOATS),
+    "cells": ((CELLS,), "float32"),
+    "global_ids": ((10,), "int64"),
+    "global": ((GLOBAL_FLOATS,), "float32"),
+}
+
 
 class EncodingError(Exception):
     """A decision does not fit the fixed sizes, or does not follow the protocol."""
@@ -81,6 +124,14 @@ def slog(value) -> float:
     """Signed log1p: keeps small amounts distinct and large ones in range."""
     value = float(value or 0)
     return float(np.sign(value) * np.log1p(abs(value)))
+
+
+def schema_hash() -> str:
+    """SHA-256 of the observation's keys, shapes and dtypes, the action segments, the decision kinds and the schema
+    revision: a checkpoint trained on another schema refuses to load."""
+    schema = {"observation": {key: [list(shape), dtype] for key, (shape, dtype) in OBSERVATION.items()},
+              "actions": ACTIONS, "kinds": KINDS, "revision": SCHEMA_REVISION}
+    return hashlib.sha256(json.dumps(schema, sort_keys=True).encode()).hexdigest()
 
 
 def segment(name: str, i: int = 0) -> int:

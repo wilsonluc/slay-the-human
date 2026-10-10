@@ -16,17 +16,18 @@ import numpy as np
 
 from agent.env import encoding, reward
 from agent.env.encoding import segment
+from agent.env.vocabulary import Vocabulary
 
 LENGTH = 100
 CHOICE_EVERY = 10
 CHOICES = LENGTH // CHOICE_EVERY
+KIND_INDEX = Vocabulary.load().index("KIND", "event")
 
 
 class FakeEnvironment:
-    def __init__(self, seed: int = 0, name: str = "fake", fail_every: int = 0, truncate_at: int = 0,
-                 kind_index: int = 1) -> None:
+    def __init__(self, seed: int = 0, name: str = "fake", fail_every: int = 0, truncate_at: int = 0) -> None:
         self.name, self.fail_every, self.truncate_at = name, fail_every, truncate_at
-        self._kind_index = kind_index
+        self._kind_index = KIND_INDEX
         self._rng = random.Random(seed)
         self._episodes = 0
 
@@ -90,5 +91,5 @@ class FakeEnvironment:
         return self._obs, step_reward, terminated, not terminated, info
 
     def _info(self, outcome) -> dict:
-        return {"seed": self._seed, "floor": self._step // CHOICE_EVERY, "kind": "event", "outcome": outcome,
+        return {"seed": self._seed, "floor": self._step // CHOICE_EVERY, "act": 1, "kind": "event", "outcome": outcome,
                 "outcome_reward": 0.0, "scores": reward.zero()}

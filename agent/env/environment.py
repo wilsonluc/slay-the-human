@@ -63,9 +63,11 @@ class Environment:
         self._rng = random.Random(seed)
         self._bridge: Bridge | None = None
         self._game = None
-        self._launches = 0
+        # A folder that already holds this game's logs and runs (a resumed training run) continues their numbering.
+        self._launches = max((int(p.stem.rsplit("-", 1)[1]) for p in self.out.glob(f"{name}-*.log")
+                              if p.stem.rsplit("-", 1)[1].isdigit()), default=0)
         self._in_run = False
-        self._runs = 0
+        self._runs = self._last_run()
         self._largest: dict[str, int] = {}
 
     # Gymnasium shape
@@ -143,6 +145,13 @@ class Environment:
 
     def action_masks(self) -> np.ndarray:
         return self._mask
+
+    def rng_state(self):
+        """The state of the generator that draws game seeds, for a checkpoint."""
+        return self._rng.getstate()
+
+    def set_rng_state(self, state) -> None:
+        self._rng.setstate(state)
 
     def close(self) -> None:
         """Quits the game: cleanly from the main menu, or by killing it mid-run."""
@@ -236,6 +245,14 @@ class Environment:
     def _floor(self):
         return self._decision["state"]["run"]["floor"]
 
+    def _last_run(self) -> int:
+        summary = self.out / "summary.jsonl"
+        if not summary.exists():
+            return 0
+        runs = [row.get("run", 0) for row in map(json.loads, summary.read_text(encoding="utf-8").splitlines())
+                if row.get("game") == self.name]
+        return max(runs, default=0)
+
     # Records
 
     def _record(self, decision: dict, action: int, before: dict) -> None:
@@ -266,7 +283,8 @@ class Environment:
             summary.write(json.dumps({"game": self.name, "run": self._runs, **record}) + "\n")
 
     def _info(self, outcome, outcome_reward: float = 0.0) -> dict:
-        return {"seed": self._seed, "floor": self._floor(), "kind": self._decision["kind"], "outcome": outcome,
+        return {"seed": self._seed, "floor": self._floor(), "act": self._decision["state"]["run"]["act"],
+                "kind": self._decision["kind"], "outcome": outcome,
                 "outcome_reward": outcome_reward, "scores": dict(self._scores)}
 
 

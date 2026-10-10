@@ -1,8 +1,8 @@
-"""Makes every decision at random: a stand-in agent that exercises the bridge (specs 004 and 005).
+"""Makes every decision at random: a stand-in agent that exercises the bridge (specs 004 to 006).
 
     python agent/random_agent.py [--seed N] [--trace FILE]
 
-Prints port=<n> once listening, for tools/run.sh, and at the end
+Prints seed=<n> first, port=<n> once listening (for tools/run.sh), and at the end
 agent_seed=<n> decisions=<n> per_second=<x>, where per_second is over the whole run.
 With --trace, writes each decision and the answer given as one JSON line.
 """
@@ -47,6 +47,8 @@ def main() -> int:
             return answer
 
         try:
+            # The seed first, so a run that fails can still be replayed.
+            print(f"seed={seed}", flush=True)
             bridge = Bridge()
             print(f"port={bridge.port}", flush=True)
             bridge.accept()

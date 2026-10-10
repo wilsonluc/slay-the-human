@@ -35,6 +35,8 @@ internal static class AgentMap
 
     private static async Task ChooseAsync(CancellationToken ct)
     {
+        // A death outside combat (a deadly event option) reaches the map handler next; end the run here.
+        await RunOver.EndIfLostAsync(ct);
         var screen = NRun.Instance?.GlobalUi.MapScreen ?? throw new InvalidOperationException("no map screen");
         List<NMapPoint> travelable = new();
         await Wait.Until(() =>

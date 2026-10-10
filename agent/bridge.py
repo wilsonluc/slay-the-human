@@ -3,7 +3,7 @@
 import json
 import socket
 
-PROTOCOL = 2
+PROTOCOL = 3
 
 
 class BridgeError(Exception):

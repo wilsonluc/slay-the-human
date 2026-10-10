@@ -35,10 +35,10 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 
 ## Unattended runs
 
-With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It starts the random Python agent (`agent/random_agent.py`, Python 3.13, standard library only), then launches the game through Steam with no window and at 20x game speed. The agent makes every combat, map, reward, card reward, rest site and card selection decision over the bridge described in `docs/protocol.md`, and the mod carries out its choices the way a player would. Events, shops, treasure rooms and the relic, bundle and Crystal Sphere screens are still decided by the game's built-in AutoSlay bot. It prints one line:
+With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It starts the random Python agent (`agent/random_agent.py`, Python 3.13, standard library only), then launches the game through Steam with no window and at 20x game speed. The agent makes every decision in the run (combat, map, rewards, card rewards, rest sites, card selections, events, shops, treasure, bundles and the Crystal Sphere) over the bridge described in `docs/protocol.md`, and the mod carries out its choices the way a player would. The game's built-in AutoSlay bot only drives the screens around them: menus, dialogue and transitions. It prints one line:
 
 ```
-seed=TEST1 character=IRONCLAD outcome=loss floor=4 seconds=35 agent_seed=1 decisions=50 per_second=7.2 log=runs/20261010-155130.log
+seed=TEST1 character=IRONCLAD outcome=loss floor=4 seconds=30 agent_seed=1 decisions=50 per_second=7.3 log=runs/20261010-165634.log
 ```
 
 - `--character=<id>` picks the character (`IRONCLAD`, the default, `SILENT`, `DEFECT`, `NECROBINDER` or `REGENT`).

@@ -1,6 +1,6 @@
 # 006: Events, shops and relics
 
-Status: approved
+Status: done
 
 ## Problem
 
@@ -21,16 +21,16 @@ The agent makes every choice in a run. Every decision that AutoSlay still makes 
 
 ## Acceptance criteria
 
-- [ ] Events: at every event choice, including each run's opening ancient event and events with their own screens such as FakeMerchant, the agent gets the event and its options (which are locked, and which the game marks as deadly) and chooses among the available ones.
-- [ ] Shops: the agent sees what the shop offers with prices (cards, relics, potions, card removal), buys any item it can afford one at a time, and chooses when to leave.
-- [ ] Treasure rooms: the agent chooses what to take from the chest among what the game allows, and when to leave.
-- [ ] Bundle choice screens: the agent chooses one of the offered bundles.
-- [ ] Crystal Sphere: the agent chooses which cells to reveal.
-- [ ] Over a full run of the random agent, AutoSlay makes no choice at all; every room and screen of the run is handled by the agent's decisions.
-- [ ] A lost run ends within seconds of the player's death, with no AutoSlay error, and the command reports the loss.
-- [ ] The same game seed, agent seed and character give the same run.
-- [ ] The protocol document covers the new decisions, and its version goes up.
-- [ ] `ROADMAP.md` marks phase 0's "every decision" need as done.
+- [x] Events: at every event choice, including each run's opening ancient event and events with their own screens such as FakeMerchant, the agent gets the event and its options (which are locked, and which the game marks as deadly) and chooses among the available ones.
+- [x] Shops: the agent sees what the shop offers with prices (cards, relics, potions, card removal), buys any item it can afford one at a time, and chooses when to leave.
+- [x] Treasure rooms: the agent chooses what to take from the chest among what the game allows, and when to leave.
+- [x] Bundle choice screens: the agent chooses one of the offered bundles.
+- [x] Crystal Sphere: the agent chooses which cells to reveal.
+- [x] Over a full run of the random agent, AutoSlay makes no choice at all; every room and screen of the run is handled by the agent's decisions.
+- [x] A lost run ends within seconds of the player's death, with no AutoSlay error, and the command reports the loss.
+- [x] The same game seed, agent seed and character give the same run.
+- [x] The protocol document covers the new decisions, and its version goes up.
+- [x] `ROADMAP.md` marks phase 0's "every decision" need as done.
 
 ## Open questions
 

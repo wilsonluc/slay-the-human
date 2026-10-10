@@ -2,7 +2,7 @@
 
 How the mod and the Python agent talk during an unattended run. This file is the protocol's single definition: the mod (`mod/Bridge.cs` and the `mod/Agent*.cs` decisions) and the agent (`agent/bridge.py`) follow it, and `tools/test.sh` checks both use the version below.
 
-Protocol version: **2**
+Protocol version: **3**
 
 Change the version whenever a message changes shape, in the same PR as both sides.
 
@@ -20,7 +20,7 @@ Change the version whenever a message changes shape, in the same PR as both side
 Sent by each side right after connecting. If the versions differ, the side that notices closes the connection and fails with both versions in its error.
 
 ```json
-{"type": "hello", "protocol": 2}
+{"type": "hello", "protocol": 3}
 ```
 
 ### decision (mod to agent)
@@ -31,7 +31,7 @@ Sent whenever the run needs a choice the agent makes. A choice with only one leg
 {"type": "decision", "id": 7, "kind": "combat", "state": {"run": {...}, "combat": {...}}, "actions": [...]}
 ```
 
-`kind` is one of `combat`, `map`, `reward`, `card_reward`, `rest`, `card_select`. `state` always has `run`, plus one object named after the kind.
+`kind` is one of `combat`, `map`, `reward`, `card_reward`, `rest`, `card_select`, `event`, `shop`, `treasure`, `bundle`, `crystal_sphere`. `state` always has `run`, plus one object named after the kind.
 
 ### action (agent to mod)
 
@@ -161,8 +161,55 @@ The game asks the player to select cards.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `purpose` | string | why: `upgrade`, `transform`, `enchant`, `remove`, `discard`, `hand_upgrade`, `hand`, `deck`, `choose`, `grid`, `reward_grid`, `combat_pile`, or `other` when the game asks some other way |
+| `purpose` | string | why: `upgrade`, `transform`, `enchant`, `remove`, `discard`, `exhaust`, `hand_upgrade`, `hand`, `deck`, `choose`, `grid`, `reward_grid`, `combat_pile`, or `other` when the game asks some other way |
 | `min`, `max` | int | how few and how many cards may be selected |
 | `cards` | array | the cards offered: `{"id", "upgraded", "type", "rarity"}` |
 
 `actions` is empty; the answer is `indices` into `cards`.
+
+### event
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | string | event ID, such as `NEOW` |
+| `page` | string or null | the localization key of the event's current text, which identifies the page it is on |
+| `options` | array | every option on the page: `{"text_key", "locked", "proceed", "deadly", "relic"}`; `deadly` is true when the game marks the option as killing the player now; `relic` is the relic an option grants, when it names one |
+
+Actions: `{"kind": "choose", "option": <index into options>}` for each option that is neither locked nor disabled.
+
+### shop
+
+The shop's inventory, or the FakeMerchant event's.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `items` | array | `{"type", "id", "cost", "on_sale", "stocked"}`: `type` is `card`, `relic`, `potion` or `card_removal`; `id` is the card, relic or potion ID; `stocked` is false once bought |
+
+Actions: `{"kind": "buy", "item": <index into items>}` for each stocked item the player can afford (a potion only with a free slot), and `{"kind": "leave"}`. Card removal then asks a `card_select` with purpose `remove`.
+
+### treasure
+
+| Field | Type | Meaning |
+|---|---|---|
+| `relic` | string or null | the chest's relic, or `null` for an empty chest |
+
+Actions: `{"kind": "take"}` when there is a relic, and `{"kind": "skip"}`.
+
+### bundle
+
+| Field | Type | Meaning |
+|---|---|---|
+| `bundles` | array | each bundle's cards, as arrays of `{"id", "upgraded", "type", "rarity"}` |
+
+Actions: `{"kind": "pick", "bundle": <index into bundles>}`.
+
+### crystal_sphere
+
+| Field | Type | Meaning |
+|---|---|---|
+| `width`, `height` | int | the grid's size |
+| `hidden` | array | the cells still hidden, as `[x, y]`; what lies under them is never sent |
+| `divinations` | int | reveals left |
+| `tool` | string | the current divination: `Big` (3 by 3) or `Small` (one cell) |
+
+Actions: `{"kind": "reveal", "x": <x>, "y": <y>}` for each hidden cell, and `{"kind": "tool", "tool": <the other tool>}`.

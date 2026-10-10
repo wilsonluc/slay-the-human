@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
+using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Models;
 
@@ -49,13 +50,16 @@ internal static class AgentCardSelect
 }
 
 /// <summary>
-/// Records why the game is asking for a card selection, from the <see cref="CardSelectCmd"/> entry point it came
-/// through. The game does not pass this to the selector.
+/// Records why the game is asking for a card selection; the game does not pass this to the selector. Each
+/// <see cref="CardSelectCmd"/> entry point is an async method, and its state machine's MoveNext runs right before it
+/// asks the selector, including after an await. The patch is on MoveNext, not on the entry point itself, because the
+/// JIT can inline the small entry point stubs into their callers, which skips patches on them. The purpose is the
+/// prompt's (the shop's removal reaches FromDeckGeneric with the "to remove" prompt), else the entry point's.
 /// </summary>
 [HarmonyPatch]
 internal static class SelectionPurpose
 {
-    private static readonly Dictionary<string, string> Purposes = new()
+    private static readonly Dictionary<string, string> EntryPurposes = new()
     {
         ["FromChooseACardScreen"] = "choose",
         ["FromSimpleGridForRewards"] = "reward_grid",
@@ -64,42 +68,50 @@ internal static class SelectionPurpose
         ["FromDeckForUpgrade"] = "upgrade",
         ["FromDeckForTransformation"] = "transform",
         ["FromDeckForEnchantment"] = "enchant",
-        ["FromDeckForRemoval"] = "remove",
         ["FromDeckGeneric"] = "deck",
         ["FromHand"] = "hand",
         ["FromHandForDiscard"] = "discard",
         ["FromHandForUpgrade"] = "hand_upgrade",
     };
 
-    /// <summary>Entry points that only pass through to another one, which then keeps their purpose.</summary>
-    private static readonly HashSet<string> PassThrough = new() { "FromDeckForRemoval", "FromHandForDiscard" };
+    /// <summary>The game's own selection prompts (card_selection.TO_*), each naming its purpose.</summary>
+    private static readonly Dictionary<string, string> PromptPurposes = new()
+    {
+        ["TO_REMOVE"] = "remove", ["TO_UPGRADE"] = "upgrade", ["TO_TRANSFORM"] = "transform",
+        ["TO_ENCHANT"] = "enchant", ["TO_DISCARD"] = "discard", ["TO_EXHAUST"] = "exhaust",
+    };
 
-    private static readonly AsyncLocal<string?> Current = new();
-    private static string? _handedDown;
+    /// <summary>For each entry point's state machine type: its purpose and its prefs field, when it has one.</summary>
+    private static readonly Dictionary<Type, (string Purpose, FieldInfo? Prefs)> Machines = new();
+
+    private static string? _last;
 
     private static bool Prepare() => RunMode.WithAgent;
 
-    private static IEnumerable<MethodBase> TargetMethods() => AccessTools.GetDeclaredMethods(typeof(CardSelectCmd))
-        .Where(method => method.IsStatic && method.IsPublic && Purposes.ContainsKey(method.Name));
-
-    private static void Prefix(MethodBase __originalMethod)
+    private static IEnumerable<MethodBase> TargetMethods()
     {
-        var purpose = Purposes[__originalMethod.Name];
-        if (PassThrough.Contains(__originalMethod.Name))
+        foreach (var method in AccessTools.GetDeclaredMethods(typeof(CardSelectCmd))
+                     .Where(method => method.IsStatic && method.IsPublic && EntryPurposes.ContainsKey(method.Name)))
         {
-            // It calls the inner entry point straight away, which takes this purpose.
-            _handedDown = purpose;
-            return;
+            var moveNext = AccessTools.AsyncMoveNext(method)
+                ?? throw new InvalidOperationException($"CardSelectCmd.{method.Name} is no longer async");
+            Machines[moveNext.DeclaringType!] = (EntryPurposes[method.Name], AccessTools.Field(moveNext.DeclaringType, "prefs"));
+            yield return moveNext;
         }
-        Current.Value = _handedDown ?? purpose;
-        _handedDown = null;
+    }
+
+    private static void Prefix(object __instance)
+    {
+        var (purpose, prefs) = Machines[__instance.GetType()];
+        var prompt = prefs?.GetValue(__instance) is CardSelectorPrefs { Prompt: { } text } ? text.LocEntryKey : null;
+        _last = prompt is not null && PromptPurposes.TryGetValue(prompt, out var fromPrompt) ? fromPrompt : purpose;
     }
 
     /// <summary>The purpose of the selection being asked for, or "other" when it came through no entry point.</summary>
     public static string Take()
     {
-        var purpose = Current.Value ?? "other";
-        Current.Value = null;
+        var purpose = _last ?? "other";
+        _last = null;
         return purpose;
     }
 }

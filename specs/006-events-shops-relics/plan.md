@@ -20,6 +20,14 @@ As in spec 005: each AutoSlay handler that still chooses is replaced by a Harmon
 
 **Losing a run.** A prefix on AutoSlay's `WaitForRewardsScreenAsync` also returns when `RunManager.IsGameOver`. It then runs AutoSlay's game over handler (no choice: continue, main menu), waits for the main menu and throws a `RunLost` signal, which a postfix on `PlayRunAsync` catches, so AutoSlay ends the run as it ends a win: `RunCompleted`, exit code 0. A death outside combat (a deadly event option) is caught the same way at the next map decision.
 
+**Found while building** (each fixed, each with a replayed run):
+- **Questions overlapping.** The game can ask for a card selection while another question is waiting (Lord's Parasol removes a card on entering a shop while the shop decision is out). The bridge now gives questions turns, so one is in flight at a time, as the protocol says.
+- **Relics that shop first.** Lord's Parasol buys everything on entering a shop, with the shop's input blocked. The shop decision waits until the shop accepts input and travel is back on, as a player would.
+- **Tutorial popups.** The ascension tutorial opens at character select once ascension is unlocked and stays open, unseen, all run. It blocks every later modal (so TRIAL's "double down" could not ask to confirm giving up) and takes the active screen (likely why the FakeMerchant's proceed button stayed disabled for AutoSlay). In run mode tutorials no longer open.
+- **Giving up.** An event option that abandons the run opens the game's confirmation; choosing the option was the agent's decision, so it is confirmed and the run ends as a loss.
+- **Card selection purposes from small methods.** The JIT inlines the small `CardSelectCmd` entry stubs, which skips patches on them; the purpose is now recorded on each entry point's async state machine, and read from the selection's prompt (`card_selection.TO_REMOVE` and the like) when it has one.
+- **Replaying a failed run.** The random agent prints its seed first, so a run that fails can be replayed.
+
 **Protocol version 3** adds the five kinds to `docs/protocol.md`; the agent needs no change beyond the version, since it already answers any kind by index.
 
 **Roadmap.** Phase 0's "every decision outside combat" need is marked done, and the results dashboard (React and MUI X on GitHub Pages, comparing generations) is added as a need after PPO and evaluation.

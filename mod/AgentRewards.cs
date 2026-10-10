@@ -41,22 +41,31 @@ internal static class AgentRewards
         return false;
     }
 
-    private static async Task ChooseAsync(NRewardsScreen screen, CancellationToken ct)
+    /// <summary>Takes rewards from the screen until the agent proceeds. Also used when a purchase opens one.</summary>
+    public static async Task ChooseAsync(NRewardsScreen screen, CancellationToken ct)
     {
         var done = false;
         while (!done)
         {
             ct.ThrowIfCancellationRequested();
-            var hasPotionSlot = Decision.Me().HasOpenPotionSlots;
+            // After a reward is taken the screen can briefly offer nothing; wait until it closes or offers a choice.
+            await Wait.Until(() => !Alive(screen) || Takeable(screen).Any() ||
+                UiHelper.FindFirst<NProceedButton>(screen) is { IsEnabled: true }, CloseTimeout,
+                "the rewards screen to offer a reward or proceed", ct);
+            if (!Alive(screen))
+            {
+                return;
+            }
             var buttons = UiHelper.FindAll<NRewardButton>(screen)
                 .Where(button => button.Reward is not null && button.IsVisibleInTree()).ToList();
+            var takeable = Takeable(screen).ToHashSet();
             var sets = UiHelper.FindAll<NLinkedRewardSet>(screen);
             var decision = new Decision("reward");
             decision.State["rewards"] = new JsonArray(buttons.Select(button => (JsonNode)Describe(button, sets)).ToArray());
             for (var i = 0; i < buttons.Count; i++)
             {
                 var button = buttons[i];
-                if (button.IsEnabled && (button.Reward is not PotionReward || hasPotionSlot))
+                if (takeable.Contains(button))
                 {
                     decision.Add(new JsonObject { ["kind"] = "take", ["reward"] = i }, () => TakeAsync(screen, button, ct));
                 }
@@ -82,6 +91,11 @@ internal static class AgentRewards
         // A claimed reward leaves the screen. One the game gives back (a skipped card reward) stays.
         await Wait.For(() => !GodotObject.IsInstanceValid(button) || !button.IsVisibleInTree() ||
             NOverlayStack.Instance?.Peek() != screen, ClaimTimeout, ct);
+        if (!Alive(screen))
+        {
+            // Taking the last reward can close the screen; what is on top now was underneath it.
+            return;
+        }
         if (NOverlayStack.Instance?.Peek() is NCardRewardSelectionScreen cardScreen)
         {
             await Wait.Until(() => !GodotObject.IsInstanceValid(cardScreen) || !cardScreen.IsVisibleInTree(),
@@ -92,6 +106,16 @@ internal static class AgentRewards
             throw new InvalidOperationException($"a reward opened a screen the agent cannot answer: {other.GetType().Name}");
         }
     }
+
+    /// <summary>The rewards that can be taken now: enabled, and a potion only with a free potion slot.</summary>
+    private static System.Collections.Generic.IEnumerable<NRewardButton> Takeable(NRewardsScreen screen)
+    {
+        var hasPotionSlot = Decision.Me().HasOpenPotionSlots;
+        return UiHelper.FindAll<NRewardButton>(screen).Where(button => button.Reward is not null &&
+            button.IsVisibleInTree() && button.IsEnabled && (button.Reward is not PotionReward || hasPotionSlot));
+    }
+
+    private static bool Alive(NRewardsScreen screen) => GodotObject.IsInstanceValid(screen) && screen.IsVisibleInTree();
 
     private static JsonObject Describe(NRewardButton button, System.Collections.Generic.List<NLinkedRewardSet> sets)
     {

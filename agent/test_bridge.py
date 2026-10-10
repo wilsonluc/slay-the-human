@@ -169,6 +169,7 @@ class RandomAgentTest(unittest.TestCase):
         agent = subprocess.Popen(
             [sys.executable, str(Path(__file__).with_name("random_agent.py")), "--seed", str(seed)],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.assertEqual(agent.stdout.readline().strip(), f"seed={seed}", "the seed is printed first")
         port = int(agent.stdout.readline().removeprefix("port="))
         mod = FakeMod(port)
         indices = []

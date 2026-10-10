@@ -78,6 +78,31 @@ def steam_running():
     return "steam.exe" in listing.stdout.lower()
 
 
+def memory(process) -> int:
+    """A running process's memory (working set) in bytes; 0 once it has exited or elsewhere than Windows."""
+    if sys.platform != "win32" or process.poll() is not None:
+        return 0
+    import ctypes
+    from ctypes import wintypes
+
+    class Counters(ctypes.Structure):
+        _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [
+            (name, ctypes.c_size_t) for name in ("PeakWorkingSetSize", "WorkingSetSize", "QuotaPeakPagedPoolUsage",
+                                                 "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+                                                 "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage")]
+
+    handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, process.pid)  # query limited information
+    if not handle:
+        return 0
+    try:
+        counters = Counters(cb=ctypes.sizeof(Counters))
+        if not ctypes.windll.psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
+            return 0
+        return counters.WorkingSetSize
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
 def launch(port, log_file, time_scale=20, command=None, extra_args=()):
     """Launches one game in run mode with no window, connecting to the agent on port and logging to log_file.
 

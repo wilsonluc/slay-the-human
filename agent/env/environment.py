@@ -18,6 +18,7 @@ import json
 import logging
 import subprocess
 import threading
+import time
 import random
 from pathlib import Path
 
@@ -49,10 +50,13 @@ def canonical_seed(seed: str) -> str:
 class Environment:
     def __init__(self, out: Path, character: str = "IRONCLAD", seed: int = 0, gamma: float = 0.999,
                  hang_seconds: float = 120.0, step_cap: int = 5000, trace_every: int = 100, time_scale: float = 20,
-                 game_command: list[str] | None = None, vocabulary: Vocabulary | None = None, name: str = "game") -> None:
+                 game_command: list[str] | None = None, vocabulary: Vocabulary | None = None, name: str = "game",
+                 memory_limit_gb: float = 4.0) -> None:
         self.out, self.character, self.gamma = Path(out), character, gamma
         self.hang_seconds, self.step_cap, self.trace_every = hang_seconds, step_cap, trace_every
         self.time_scale, self.game_command, self.name = time_scale, game_command, name
+        self.memory_limit = int(memory_limit_gb * 2**30)
+        self._memory_failure: str | None = None
         self.vocabulary = vocabulary or Vocabulary.load()
         self.encoder = Encoder(self.vocabulary)
         self.out.mkdir(parents=True, exist_ok=True)
@@ -110,7 +114,7 @@ class Environment:
         try:
             message = self._answer(answer)
         except (BridgeError, TimeoutError, OSError) as e:
-            self._failure = f"failed: {self._game_error() or e or 'no decision within the hang time'}"
+            self._failure = f"failed: {self._memory_failure or self._game_error() or e or 'no decision within the hang time'}"
         self._record(decision, action, before)
         if self._failure:
             log.error("%s: run failed at a %s decision (floor %s, seed %s): %s; game log %s", self.name,
@@ -162,11 +166,25 @@ class Environment:
         self._bridge = Bridge(accept_timeout=self.hang_seconds)
         self._log = self.out / f"{self.name}-{self._launches}.log"
         self._game = games.launch(self._bridge.port, self._log.resolve(), self.time_scale, self.game_command)
+        self._memory_failure = None
+        threading.Thread(target=self._watch_memory, args=(self._game,), daemon=True).start()
         hello = self._bridge.accept()
         self.vocabulary.check(hello)
         self._bridge.wait_ready(self.hang_seconds)
         log.info("%s: launched (%s), game %s", self.name, self._launches, hello.get("game_version"))
         self._in_run = False
+
+    def _watch_memory(self, game) -> None:
+        """Kills the game if its memory passes the limit: a game stuck allocating can starve the whole machine. The run
+        then fails like any game that stops, with this as its reason."""
+        while game.poll() is None:
+            used = games.memory(game)
+            if used > self.memory_limit:
+                self._memory_failure = f"the game used {used / 2**30:.1f} GB, past the {self.memory_limit / 2**30:g} GB limit"
+                log.error("%s: %s; stopping it", self.name, self._memory_failure)
+                game.kill()
+                return
+            time.sleep(2)
 
     def _kill(self) -> None:
         if self._game is not None and self._game.poll() is None:

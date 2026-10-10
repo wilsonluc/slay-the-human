@@ -93,6 +93,14 @@ class EnvironmentTest(unittest.TestCase):
             steps = play(env, random.Random(4))
         self.assertIn("told to quit", steps[-1][3]["outcome"])
 
+    @unittest.skipUnless(sys.platform == "win32", "memory is read on Windows")
+    def test_a_game_past_the_memory_limit_is_stopped(self):
+        env = self.env(mode="memory", memory_limit_gb=0.2, hang_seconds=30)
+        with self.assertLogs("agent.env.environment", "ERROR"):
+            steps = play(env, random.Random(11))
+        self.assertTrue(steps[-1][2])
+        self.assertIn("past the 0.2 GB limit", steps[-1][3]["outcome"])
+
     def test_an_illegal_action_raises_naming_it_and_relaunches(self):
         env = self.env()
         env.reset()

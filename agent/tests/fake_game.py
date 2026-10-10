@@ -7,7 +7,7 @@ It is launched exactly like the game (agent/env/games.py), with Python as the ex
 After each start it plays recorded decisions (recordings/decisions.jsonl) in order, the first N of them, checks each
 answer the way the mod does, then ends the run with run_end and waits at ready again. Modes make it misbehave:
 hang (stops answering partway through a run), exit (quits partway through), version (another protocol version),
-game-version (another game version), unknown (a card the vocabulary lacks).
+game-version (another game version), unknown (a card the vocabulary lacks), memory (allocates 400 MB and stops answering).
 """
 
 import argparse
@@ -63,6 +63,9 @@ def main() -> int:
         print(f"[SlayTheHuman] run start seed={start['seed']}", file=log, flush=True)
         for number, recorded in enumerate(decisions, start=1):
             if number == 2 and args.mode == "hang":
+                time.sleep(3600)
+            if number == 2 and args.mode == "memory":
+                ballast = bytearray(400 * 2**20)  # noqa: F841, held while it hangs
                 time.sleep(3600)
             if number == 2 and args.mode == "exit":
                 print("[SlayTheHuman] run error: the fake game was told to quit", file=log, flush=True)

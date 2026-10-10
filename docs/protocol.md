@@ -62,7 +62,6 @@ The answer to a decision, with the same `id`. For every kind but `card_select`, 
 
 The mod ends the run as an error, and never chooses on its own, when:
 - the answer is not a valid choice for that decision, or its `id` does not match;
-- the agent does not answer within 30 seconds;
 - the connection closes;
 - the game refuses the choice.
 

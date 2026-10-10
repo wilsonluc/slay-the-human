@@ -31,10 +31,7 @@ internal static class AgentEvent
 {
     private const int MaxChoices = 50;
     private static readonly TimeSpan ChangeTimeout = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan ResumeTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan PopupTimeout = TimeSpan.FromMilliseconds(300);
-    private static readonly TimeSpan CombatTimeout = TimeSpan.FromSeconds(3);
 
     private static readonly MethodInfo WaitForEventRoom = AccessTools.Method(typeof(EventRoomHandler), "WaitForEventRoom");
     private static readonly MethodInfo WaitForEventOptions = AccessTools.Method(typeof(EventRoomHandler), "WaitForEventOptions");
@@ -63,7 +60,9 @@ internal static class AgentEvent
             {
                 // The room closed. A combat may be replacing it, which the game registers a moment later, so wait to
                 // see what comes next; after a combat, the event may resume in a new room.
-                await Wait.For(() => CombatStarting || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0, CombatTimeout, ct);
+                await Wait.Until(() => CombatStarting || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 ||
+                    (NMapScreen.Instance?.IsOpen ?? false) || RunOver.IsOver, ChangeTimeout,
+                    "what follows the event room closing", ct);
                 var run = RunManager.Instance.DebugOnlyGetState();
                 if (!CombatStarting || run is null || run.CurrentRoomCount <= 1 || run.BaseRoom?.RoomType != RoomType.Event)
                 {
@@ -72,7 +71,14 @@ internal static class AgentEvent
                 await (Task)HandleEventCombat.Invoke(handler, new object[] { ct })!;
                 var resumed = ((SceneTree)Engine.GetMainLoop()).Root
                     .GetNodeOrNull("/root/Game/RootSceneContainer/Run/RoomContainer/EventRoom");
-                if (resumed is null || !await Wait.For(() => Options(resumed).Count > 0, ResumeTimeout, ct))
+                if (resumed is null)
+                {
+                    return;
+                }
+                await Wait.Until(() => !Alive(resumed) || Options(resumed).Count > 0 || (NMapScreen.Instance?.IsOpen ?? false) ||
+                    (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || RunOver.IsOver, ChangeTimeout,
+                    "the event to resume after its combat", ct);
+                if (!Alive(resumed) || Options(resumed).Count == 0)
                 {
                     return;
                 }
@@ -83,9 +89,10 @@ internal static class AgentEvent
             if (buttons.Count == 0)
             {
                 // A click clears the options at once; wait for what follows before deciding the event is over.
-                if (await Wait.For(() => !Alive(eventRoom) || Options(eventRoom).Count > 0 || CombatStarting ||
-                        (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || (NMapScreen.Instance?.IsOpen ?? false),
-                        ChangeTimeout, ct) && (!Alive(eventRoom) || Options(eventRoom).Count > 0))
+                await Wait.Until(() => !Alive(eventRoom) || Options(eventRoom).Count > 0 || CombatStarting ||
+                    (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || (NMapScreen.Instance?.IsOpen ?? false) || RunOver.IsOver,
+                    ChangeTimeout, "the event to show what follows", ct);
+                if (!Alive(eventRoom) || Options(eventRoom).Count > 0)
                 {
                     continue;
                 }
@@ -96,7 +103,14 @@ internal static class AgentEvent
                 }
                 return;
             }
+            var before = new HashSet<NEventOptionButton>(buttons);
             var chosen = await ChooseAsync(eventRoom, buttons, ct);
+            // Whatever the option does shows on screen: a new page, a screen, a combat, the map, the room closing, or,
+            // for an option that gives up the run, the game's confirmation.
+            await Wait.Until(() => GivingUp || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 ||
+                (NMapScreen.Instance?.IsOpen ?? false) || !Alive(eventRoom) || CombatManager.Instance.IsInProgress ||
+                !before.SetEquals(Options(eventRoom)) || RunOver.IsOver,
+                ChangeTimeout, $"the event to respond to {chosen.Option.TextKey}", ct);
             await ConfirmGivingUpAsync(ct);
             if (RunOver.IsOver)
             {
@@ -108,10 +122,6 @@ internal static class AgentEvent
                     "the event to close", ct);
                 return;
             }
-            var before = new HashSet<NEventOptionButton>(buttons);
-            await Wait.Until(() => (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || (NMapScreen.Instance?.IsOpen ?? false) ||
-                !Alive(eventRoom) || CombatManager.Instance.IsInProgress || !before.SetEquals(Options(eventRoom)),
-                ChangeTimeout, $"the event to respond to {chosen.Option.TextKey}", ct);
             if ((NOverlayStack.Instance?.ScreenCount ?? 0) > 0)
             {
                 return;
@@ -119,9 +129,14 @@ internal static class AgentEvent
             if (CombatManager.Instance.IsInProgress)
             {
                 await (Task)HandleEventCombat.Invoke(handler, new object[] { ct })!;
-                if (!Alive(eventRoom) || !await Wait.For(() => !Alive(eventRoom) || (NMapScreen.Instance?.IsOpen ?? false) ||
-                        (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || Options(eventRoom).Count > 0, ResumeTimeout, ct) ||
-                    !Alive(eventRoom))
+                if (!Alive(eventRoom))
+                {
+                    return;
+                }
+                await Wait.Until(() => !Alive(eventRoom) || (NMapScreen.Instance?.IsOpen ?? false) ||
+                    (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || Options(eventRoom).Count > 0 || RunOver.IsOver,
+                    ChangeTimeout, "the event to resume after its combat", ct);
+                if (!Alive(eventRoom) || Options(eventRoom).Count == 0)
                 {
                     return;
                 }
@@ -171,18 +186,17 @@ internal static class AgentEvent
     /// </summary>
     private static async Task ConfirmGivingUpAsync(CancellationToken ct)
     {
-        if (!await Wait.For(() => NModalContainer.Instance?.OpenModal is NAbandonRunConfirmPopup, PopupTimeout, ct))
+        if (!GivingUp)
         {
-            if (NModalContainer.Instance?.OpenModal is { } open)
-            {
-                MegaCrit.Sts2.Core.Logging.Log.Info($"[{ModEntry.Id}] a modal is open: {open.GetType().Name}");
-            }
             return;
         }
         var popup = (Node)NModalContainer.Instance!.OpenModal!;
         await UiHelper.Click(popup.GetNode<NButton>("VerticalPopup/YesButton"));
         await Wait.Until(() => RunOver.IsOver, ChangeTimeout, "the run to end after giving up", ct);
     }
+
+    /// <summary>The game is asking to confirm giving up the run.</summary>
+    private static bool GivingUp => NModalContainer.Instance?.OpenModal is NAbandonRunConfirmPopup;
 
     /// <summary>The event has started a combat: its room is a combat room now, or the combat is under way.</summary>
     private static bool CombatStarting => CombatManager.Instance.IsInProgress ||

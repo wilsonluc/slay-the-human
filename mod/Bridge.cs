@@ -24,7 +24,6 @@ internal static class Bridge
     public const int Protocol = 4;
 
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(30);
 
     public static readonly string? PortArgument = CommandLineHelper.GetValue("slay-the-human-agent-port");
 
@@ -172,7 +171,8 @@ internal static class Bridge
             {
                 ["type"] = "decision", ["id"] = id, ["kind"] = kind, ["state"] = state, ["actions"] = actions,
             });
-            var answer = await ReceiveAsync(AnswerTimeout, ct);
+            // No time limit: the agent may pause to learn between answers. A hang is the agent's to catch.
+            var answer = await ReceiveAsync(Timeout.InfiniteTimeSpan, ct);
             if ((string?)answer["type"] != "action")
             {
                 throw new BridgeException($"expected action from the agent, got {answer["type"]?.ToJsonString() ?? "nothing"}");

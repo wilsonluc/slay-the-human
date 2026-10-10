@@ -10,7 +10,7 @@
 - [ ] 8. Vocabulary: `Vocabulary.cs` keys in `hello`, `vocabulary.py` with `--update`, committed `vocabulary.json`. `test_vocabulary` passes; a second `--update` adds nothing.
 - [ ] 9. Recordings: one real decision of every kind (including a mid-combat selection, a multi-card selection, a bundle and the Crystal Sphere) in `agent/tests/recordings/`. A test asserts every kind is present.
 - [ ] 10. `encoding.py`: sets, sizes, scaling, map route summaries, action segments, mask, single picks, overflow. `test_encoding` round-trips every recording.
-- [ ] 11. `reward.py` with its documentation. `test_reward` passes on hand-worked values.
+- [x] 11. `reward.py` with its documentation. `test_reward` passes on hand-worked values.
 - [ ] 12. `fake_game.py` and `environment.py`: reset/step/masks, hang detection, failures, step cap, illegal actions, traces and summary rows, set-size logging. `test_environment` passes in CI.
 - [ ] 13. Several games and the speed command: staggered `make_environments`; `random_agent.py` on the environment with `--games`, `--trace-every`, `--think-seconds`, `--replay`. A sweep of random runs with no overflow or unknown value; sizes set from it with margin; `--games 1` and `--games 8` figures recorded.
 - [ ] 14. Determinism: fresh vs after other runs, alone vs parallel, idle vs busy, two profiles, and a summary row's replay all give identical traces.

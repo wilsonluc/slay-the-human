@@ -1,12 +1,13 @@
 """Makes every decision at random: a stand-in agent that exercises the bridge and the game.
 
     python -m agent.random_agent [--runs N] [--seed N] [--game-seeds S1,S2,...] [--character ID] [--time-scale X]
-                                 [--no-launch]
+                                 [--think-seconds S --think-count K] [--no-launch]
 
 Launches one game from the game copy (agent/env/games.py) and plays N runs back to back in it. Prints seed=<n> first,
 then one line per run: seed= character= outcome= floor= decisions= per_second= trace=, and at the end the totals.
 Game seeds come from the agent seed, so the same --seed replays the same runs; --game-seeds fixes the first runs'.
 Each run's choices depend only on the agent seed and that run's game seed, so a run replays the same wherever it falls.
+--think-seconds S --think-count K sleeps S seconds before each of the first K answers, to check the game waits.
 --no-launch prints port=<n> and waits for a game launched some other way to connect. Game logs and traces go in
 runs/<time>/.
 """
@@ -42,9 +43,11 @@ def pick(decision: dict, rng: random.Random) -> int | list[int]:
     return rng.randrange(len(decision["actions"]))
 
 
-def play_runs(bridge: Bridge, runs: int, agent_seed: int, character: str, out: Path, game_seeds: list[str] = ()):
+def play_runs(bridge: Bridge, runs: int, agent_seed: int, character: str, out: Path, game_seeds: list[str] = (),
+              think: tuple[float, int] = (0.0, 0)):
     """Plays runs back to back on a connected game, then closes the connection. Yields one summary dict per run."""
     seeds = random.Random(agent_seed)
+    think_seconds, think_left = think
     for number in range(1, runs + 1):
         seed = game_seeds[number - 1] if number <= len(game_seeds) else game_seed(seeds)
         rng = random.Random(f"{agent_seed}/{seed}")
@@ -53,7 +56,10 @@ def play_runs(bridge: Bridge, runs: int, agent_seed: int, character: str, out: P
         with trace_path.open("w", encoding="utf-8") as trace:
 
             def choose(decision: dict) -> int | list[int]:
-                nonlocal decisions
+                nonlocal decisions, think_left
+                if think_left > 0:
+                    think_left -= 1
+                    time.sleep(think_seconds)
                 decisions += 1
                 answer = pick(decision, rng)
                 trace.write(json.dumps({"decision": decision, "answer": answer}) + "\n")
@@ -79,6 +85,8 @@ def main() -> int:
     parser.add_argument("--game-seeds", default="", help="the first runs' game seeds, comma-separated (default: drawn from --seed)")
     parser.add_argument("--character", default="IRONCLAD", help="character ID (default IRONCLAD)")
     parser.add_argument("--time-scale", type=float, default=20, help="game speed (default 20)")
+    parser.add_argument("--think-seconds", type=float, default=0.0, help="seconds to sleep before each of the first answers")
+    parser.add_argument("--think-count", type=int, default=0, help="how many answers to sleep before (default 0)")
     parser.add_argument("--no-launch", action="store_true", help="wait for a game launched some other way")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
@@ -98,7 +106,7 @@ def main() -> int:
             game = games.launch(bridge.port, log.resolve(), args.time_scale)
         bridge.accept()
         game_seeds = [s for s in args.game_seeds.split(",") if s]
-        for run in play_runs(bridge, args.runs, seed, args.character, out, game_seeds):
+        for run in play_runs(bridge, args.runs, seed, args.character, out, game_seeds, (args.think_seconds, args.think_count)):
             total_decisions += run["decisions"]
             print(" ".join(f"{key}={value:.1f}" if isinstance(value, float) else f"{key}={value}"
                            for key, value in run.items()), flush=True)

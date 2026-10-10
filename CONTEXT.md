@@ -33,6 +33,7 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 - **Training run**: one training session, from start to stop, with its record in `runs/<training run>/`. Not a run of the game.
 - **Rollout**: the batch of steps collected under the current policy before one PPO update.
 - **Checkpoint**: the saved policy weights at one point in training, with the record of what produced them.
+- **Generation**: a checkpoint that was evaluated. The dashboard compares generations on the same evaluation seeds.
 - **Evaluation**: measuring a checkpoint's win rate on a fixed set of evaluation seeds that training never uses, with the agent choosing its best action.
 - **Baseline**: an evaluation of a reference agent (random, then the first PPO agent) that a phase's target is set from.
 

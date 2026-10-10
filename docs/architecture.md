@@ -36,7 +36,7 @@ agent/
   evaluate.py        fixed evaluation seeds kept apart from training; best action                 009
   checkpoint.py      owns runs/<training run>/: config.json, metrics.csv, checkpoints; save and resume 008, last N and best 009
   tests/             one file per module, runnable in CI, plus a fake game (007) and a fake environment (008)
-dashboard/           React and MUI X on GitHub Pages; reads exported runs/*/metrics.csv and config.json    010
+dashboard/           React and MUI X on GitHub Pages; compares generations (evaluated checkpoints); reads exported runs/*/metrics.csv and config.json    010
 runs/                gitignored: game logs, traces, run records, checkpoints, evaluation results
 pyproject.toml       Python version and pinned dependencies (numpy from 007, torch from 008)
 ```
@@ -59,4 +59,4 @@ Modular but shallow: one file per concern, with the PPO maths kept readable in p
 
 ## Deliberately left out
 
-Until a measurement asks for it: a schedule fading the reward's shaping weights (if a term's totals dominate late in training), a recurrent (memory) policy, an entity transformer, running observation or reward normalisation (each reward term's weight keeps its total over a run within ±1 instead), Gymnasium space declarations, W&B or YAML configuration, asynchronous learners, and any second algorithm.
+Until a measurement asks for it: a schedule fading the reward's shaping weights (if a term's totals dominate late in training), a recurrent (memory) policy, an entity transformer, running observation or reward normalisation (each reward term's weight keeps its total over a run within ±1 instead), Gymnasium space declarations, W&B or YAML configuration, asynchronous learners, any second algorithm, and population-based training (several policies at once; only if parallel games are plentiful and one training run stalls on its hyperparameters).

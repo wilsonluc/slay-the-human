@@ -6,17 +6,16 @@ Status: draft
 
 Since spec 006 the agent makes every decision in a run, but in a shape a learner cannot use. A PPO learner needs a step interface: reset, then step with an action, getting back an observation, which actions are legal, a reward, and whether the episode is over. It needs every observation in one fixed shape and every action at a fixed index. Today each decision is a JSON message whose shape depends on its kind, and its actions are a list that changes length every time.
 
-It also needs many episodes, fast, and the game has to wait for it. Today each run launches the game through Steam and the game quits at the end, so every run pays the game's start-up. The mod connects only at a run's first decision, so the agent cannot start a run or choose its seed. And the game gives up on a decision after a fixed time, which a learner pausing to update its policy would hit every time.
+It also needs many episodes, fast, and the game has to wait for it. One game makes about 7 decisions a second, held back by its own frame time, so a faster game alone cannot give PPO the tens of millions of steps it needs; several game processes at once can, and a measurement showed they run side by side, with identical results, when launched directly rather than through Steam. Today each run launches the game through Steam and the game quits at the end, so every run pays the game's start-up, about 20 seconds. The mod and the game flow also wait fixed real times (after clicks, rooms and rewards) that do nothing for the run. The mod connects only at a run's first decision, so the agent cannot start a run or choose its seed. And the game gives up on a decision after a fixed time, which a learner pausing to update its policy would hit every time.
 
 ## Goal
 
-A Python environment a learner can drive one step at a time, laid out as `docs/architecture.md` describes: each decision of a run comes as a fixed-shape observation with a mask of the legal actions in one fixed action space, each step returns a reward, one game process plays runs back to back, and the game waits for the learner as long as it takes.
+A Python environment a learner can drive one step at a time, laid out as `docs/architecture.md` describes: each decision of a run comes as a fixed-shape observation with a mask of the legal actions in one fixed action space, each step returns a reward, several game processes run at once, each playing runs back to back, and the game waits for the learner as long as it takes.
 
 ## Non-goals
 
 - Learning. PPO is the next spec.
 - Evaluation, checkpoints and the results dashboard.
-- Several games at once.
 - Ascension above 0 (`ROADMAP.md`: ascension support), and changing character between runs; the environment is created with one character.
 - Discarding potions. The game allows it, the agent does not yet; a potion reward stays masked while the slots are full.
 
@@ -43,15 +42,17 @@ Reward:
 
 Runs and failures:
 
-- [ ] One game process plays at least 10 runs in a row, each started by `reset()`, without relaunching.
+- [ ] Several game processes run at once, each its own environment. The number is a setting, not tied to one machine. The environment launches each game directly (not through Steam), staggering start-ups so none times out while the others load.
+- [ ] Each game process plays at least 10 runs in a row, each started by `reset()`, without relaunching.
+- [ ] Between decisions, the mod and the game flow wait on the game's state, not on fixed times; the only fixed time left is the hang detection below.
 - [ ] The game waits for each action with no time limit: a run is not failed because the learner was slow to answer.
 - [ ] Only a win or a loss is `terminated`. A run that fails (the game stops, or sends no decision within a set time after an action) ends its episode as `truncated`, with the reason, decision kind and floor logged as an error; that step returns the last decision's observation, and the info's outcome names the failure. The next `reset()` starts the game again if it has to.
 - [ ] A run that reaches a set number of steps ends as `truncated`, with the outcome naming the step limit.
-- [ ] The same seed and the same actions give the same observations, masks and rewards: in a fresh game process or after other runs, with the machine otherwise idle or busy, and whatever the profile has unlocked.
+- [ ] The same seed and the same actions give the same observations, masks and rewards: in a fresh game process or after other runs, alone or alongside other game processes, with the machine otherwise idle or busy, and whatever the profile has unlocked.
 
 Measurement and tests:
 
-- [ ] A command plays a given number of runs with random actions through the environment and prints steps per second, runs per hour and the floor reached. The numbers go into `ROADMAP.md`'s phase 0 decision point.
+- [ ] A command plays a given number of runs with random actions across a given number of game processes and prints steps per second (per game and in total), runs per hour and the floor reached, so the number of games can be chosen on any machine.
 - [ ] The environment's tests run in CI against a fake game that speaks `docs/protocol.md`, and the encoding round-trips recorded decisions of every kind.
 
 ## Open questions

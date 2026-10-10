@@ -13,7 +13,7 @@ Where the project is going, in phases. A phase is a result the agent reaches, ch
 
 The game has ascension levels 0 to 10, and they are cumulative: ascension *n* keeps every modifier of the levels below it (`AscensionManager.HasLevel` is `level >= n`). The playable characters are Ironclad, Silent, Defect, Necrobinder and Regent.
 
-**Phase 0 decision point.** After the training environment (spec 007), its measured steps per second and runs per hour go here. Learning a full run from scratch likely takes tens of millions of steps, so if one game is too slow for that, the next spec is either running several games at once (once two game processes are shown to run on one machine) or a combat-only environment, before PPO.
+**Speed.** Learning a full run from scratch likely takes tens of millions of steps. One game makes about 7 decisions a second, bound by its frame time, so the training environment (spec 007) runs several games at once: measured at about 6 times the speed with 8 copies on an 8-core desktop, before removing start-up and fixed waits. If training still turns out too slow, the next step is a combat-only environment, before any simulator of the game.
 
 **Ascension 10 ends later.** At ascension 10 the act 3 boss is followed by a second one on floor 49; ascension support must play to it, not stop at floor 48.
 

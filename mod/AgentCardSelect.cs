@@ -99,6 +99,13 @@ internal static class SelectionPurpose
 
     private static bool Prepare() => RunMode.WithAgent;
 
+    /// <summary>At each run's start, so a purpose from the last run never reaches this one.</summary>
+    public static void Reset()
+    {
+        _last = null;
+        _handedDown = null;
+    }
+
     private static IEnumerable<MethodBase> TargetMethods()
     {
         foreach (var method in AccessTools.GetDeclaredMethods(typeof(CardSelectCmd))

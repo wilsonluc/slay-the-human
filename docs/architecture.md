@@ -11,7 +11,7 @@ Slay the Spire 2 (headless, via Steam)
             └─ agent/ (Python)  makes every decision: the random agent now, the PPO policy later
 ```
 
-`tools/run.sh` plays one run with the random agent. From spec 007, the training environment drives the game itself, and the learner drives the environment.
+`python -m agent.random_agent` plays runs with the random agent. From spec 007, the training environment drives the games itself, and the learner drives the environment.
 
 ## Python layout
 

@@ -35,19 +35,23 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 
 ## Unattended runs
 
-With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It starts the random Python agent (`agent/random_agent.py`, Python 3.13 with the packages in `pyproject.toml`; install them with `pip install -e .`), then launches the game through Steam with no window and at 20x game speed. The agent makes every decision in the run (combat, map, rewards, card rewards, rest sites, card selections, events, shops, treasure, bundles and the Crystal Sphere) over the bridge described in `docs/protocol.md`, and the mod carries out its choices the way a player would. The game's built-in AutoSlay bot only drives the screens around them: menus, dialogue and transitions. It prints one line:
+Unattended runs use a copy of the game per build, which Steam never updates: make it once with `sh tools/copy-game.sh`, then run `sh tools/mod.sh` again so the copy gets the mod. Install the agent's packages with `pip install -e .` (Python 3.13).
+
+With Steam running, `python -m agent.random_agent --runs 3` launches the game copy with no window and at 20x game speed, and plays three full runs back to back in it with nobody at the keyboard. The random agent makes every decision in each run (combat, map, rewards, card rewards, rest sites, card selections, events, shops, treasure, bundles and the Crystal Sphere) over the bridge described in `docs/protocol.md`, and the mod carries out its choices the way a player would. The game's built-in AutoSlay bot only drives the screens around them: menus, dialogue and transitions. It prints a line per run, then the totals:
 
 ```
-seed=TEST1 character=IRONCLAD outcome=loss floor=4 seconds=30 agent_seed=1 decisions=50 per_second=7.3 log=runs/20261010-165634.log
+seed=1
+seed=7KQ2M0AB9C character=IRONCLAD outcome=loss floor=4 decisions=50 per_second=7.3 trace=runs/20261010-165634/run-1.trace.jsonl
+agent_seed=1 runs=3 decisions=161 per_second=6.9 log=runs/20261010-165634/game.log
 ```
 
-- `--character=<id>` picks the character (`IRONCLAD`, the default, `SILENT`, `DEFECT`, `NECROBINDER` or `REGENT`).
-- `--seed=<seed>` and `--agent-seed=<n>` replay a run: with the same character, the same pair visits the same rooms and makes the same decisions. Without them, each run gets new random seeds.
-- `--time-scale=<n>` sets the game speed (default 20; past about 10 the gain is small).
-- The run's game log, the agent's output and a trace of every decision and choice (`.trace.jsonl`) are kept in `runs/` (gitignored).
-- The run ends as an error, and the command exits 1 with the reason, if the agent picks an action that is not listed (or a card selection outside its limits), does not answer within 30 seconds, disconnects, or speaks another protocol version; if the run stops making progress for 120 seconds (`STALL_SECONDS`); or if the game exits before the run ends. Nothing ever picks an action in the agent's place.
+- `--character <id>` picks the character (`IRONCLAD`, the default, `SILENT`, `DEFECT`, `NECROBINDER` or `REGENT`).
+- `--seed <n>` replays a set of runs: with the same character, the same agent seed draws the same game seeds and makes the same decisions. `--game-seed <seed>` fixes the first run's game seed.
+- `--time-scale <n>` sets the game speed (default 20; past about 10 the gain is small).
+- The game log and a trace of every decision and choice in each run (`.trace.jsonl`) are kept in `runs/` (gitignored).
+- A run ends as an error, and the command exits 1 with the reason, if the agent picks an action that is not listed (or a card selection outside its limits), disconnects, or speaks another protocol version, or if the game sends nothing for 120 seconds or exits mid-run. Nothing ever picks an action in the agent's place.
 - Runs use the game's separate modded profile and save nothing, so your own saves, stats and achievements are untouched.
-- A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started by this command.
+- A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started with them.
 
 Run the agent's tests with `python -m unittest discover -s agent/tests -t .`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
 
@@ -60,7 +64,7 @@ Run the agent's tests with `python -m unittest discover -s agent/tests -t .`, an
 - `mod/` — the C# mod the game loads: its project, its manifest (`SlayTheHuman.json`), its Harmony patches and its side of the bridge.
 - `agent/` — the Python side of the bridge (`bridge.py`), the random agent, and their tests.
 - `docs/protocol.md` — the messages between the mod and the agent.
-- `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `mod.sh` builds and installs the mod; `run.sh` plays an unattended run; `game.sh` finds the game for all three; `test.sh` checks how they refuse bad setups.
+- `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `mod.sh` builds and installs the mod; `copy-game.sh` copies the game for unattended runs; `game.sh` finds the game for all three; `test.sh` checks how they refuse bad setups.
 - `decompiled/` (gitignored, local only) — the game's C# source for the targeted build, made by `tools/decompile.sh`.
 - `docs/architecture.md` — how the pieces fit, and the Python layout the specs grow into.
 - `ROADMAP.md` — the phases: what the agent should reach, in order, and the rules for moving between them.

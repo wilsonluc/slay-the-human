@@ -1,10 +1,12 @@
 """Tests for bridge.py and random_agent.py, with a fake mod on a real socket. Run: python -m unittest discover -s agent/tests -t ."""
 
 import json
+import os
 import random
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import unittest
 from pathlib import Path
@@ -29,7 +31,7 @@ DECISION = {
             "player": {"hp": 80, "max_hp": 80, "block": 0, "energy": 3, "max_energy": 3, "stars": 0, "powers": []},
             "hand": [{"id": "STRIKE_IRONCLAD", "upgraded": False, "cost": 1, "costs_x": False, "star_cost": -1,
                       "type": "Attack", "target": "AnyEnemy", "playable": True}],
-            "draw": 5, "discard": 0, "exhaust": 0,
+            "draw": [], "discard": [], "exhaust": [],
             "enemies": [{"id": "NIBBIT", "alive": True, "hp": 20, "max_hp": 20, "block": 0, "powers": [],
                          "intents": [{"type": "Attack", "damage": 6, "hits": 1}]}],
         },
@@ -45,14 +47,18 @@ def card_select(decision_id: int, cards: int, low: int, high: int) -> dict:
                                                   "cards": [CARD] * cards}}}
 
 
+HELLO = {"type": "hello", "protocol": PROTOCOL, "game_version": "v0.107.1", "game_commit": "59260271"}
+RUN_END = {"type": "run_end", "outcome": "loss", "floor": 3, "seed": "ABC"}
+
+
 class FakeMod:
-    """Plays the mod's side: connects to the bridge and sends the given lines after the handshake."""
+    """Plays the mod's side: connects to the bridge, says hello, then sends and receives what a test asks."""
 
     def __init__(self, port: int, protocol: int = PROTOCOL):
         self.received: list[dict] = []
         self._sock = socket.create_connection(("127.0.0.1", port))
         self._file = self._sock.makefile("rw", encoding="utf-8", newline="\n")
-        self.send({"type": "hello", "protocol": protocol})
+        self.send({**HELLO, "protocol": protocol})
         self.received.append(self.receive())
 
     def send(self, message: dict) -> None:
@@ -63,8 +69,9 @@ class FakeMod:
         self._file.write(line + "\n")
         self._file.flush()
 
-    def receive(self) -> dict:
-        return json.loads(self._file.readline())
+    def receive(self) -> dict | None:
+        line = self._file.readline()
+        return json.loads(line) if line else None
 
     def close(self) -> None:
         self._file.close()
@@ -84,64 +91,84 @@ def connect(bridge: Bridge, protocol: int = PROTOCOL) -> FakeMod:
 
 
 class BridgeTest(unittest.TestCase):
-    def test_handshake_sends_hello_with_version(self):
-        bridge = Bridge(accept_timeout=5)
-        mod = connect(bridge)
+    def setUp(self):
+        self.bridge = Bridge(accept_timeout=5)
+
+    def test_handshake_exchanges_hellos(self):
+        mod = connect(self.bridge)
         self.assertEqual(mod.received, [{"type": "hello", "protocol": PROTOCOL}])
+        self.assertEqual(self.bridge.hello, HELLO)
         mod.close()
 
     def test_version_mismatch_names_both_versions(self):
-        bridge = Bridge(accept_timeout=5)
         with self.assertRaisesRegex(BridgeError, f"the game speaks {PROTOCOL + 1}, the agent {PROTOCOL}"):
-            connect(bridge, protocol=PROTOCOL + 1)
+            connect(self.bridge, protocol=PROTOCOL + 1)
 
     def test_no_connection_times_out(self):
         with self.assertRaisesRegex(BridgeError, "did not connect within 0.2 seconds"):
             Bridge(accept_timeout=0.2).accept()
 
-    def test_decision_answered_with_chosen_index_then_run_end_returned(self):
-        bridge = Bridge(accept_timeout=5)
-        mod = connect(bridge)
+    def test_start_waits_for_ready_then_sends_seed_and_character(self):
+        mod = connect(self.bridge)
+        mod.send({"type": "ready"})
+        self.bridge.start("ABC", "IRONCLAD")
+        self.assertEqual(mod.receive(), {"type": "start", "seed": "ABC", "character": "IRONCLAD"})
+        mod.close()
+
+    def test_start_without_ready_fails(self):
+        mod = connect(self.bridge)
         mod.send(DECISION)
-        mod.send({"type": "run_end", "outcome": "loss", "floor": 3})
+        with self.assertRaisesRegex(BridgeError, "expected ready, got 'decision'"):
+            self.bridge.start("ABC", "IRONCLAD")
+        mod.close()
+
+    def test_decisions_answered_then_run_end_returned_and_connection_kept(self):
+        mod = connect(self.bridge)
+        mod.send(DECISION)
+        mod.send(RUN_END)
         seen = []
-        end = bridge.run(lambda decision: seen.append(decision) or 1)
+        end = self.bridge.play(lambda decision: seen.append(decision) or 1)
         self.assertEqual(seen, [DECISION])
         self.assertEqual(mod.receive(), {"type": "action", "id": 1, "index": 1})
-        self.assertEqual(end, {"type": "run_end", "outcome": "loss", "floor": 3})
+        self.assertEqual(end, RUN_END)
+        mod.send({"type": "ready"})
+        self.bridge.start("DEF", "IRONCLAD")
+        self.assertEqual(mod.receive()["seed"], "DEF")
         mod.close()
 
     def test_card_select_answered_with_indices(self):
-        bridge = Bridge(accept_timeout=5)
-        mod = connect(bridge)
+        mod = connect(self.bridge)
         mod.send(card_select(1, cards=3, low=0, high=2))
-        mod.send({"type": "run_end", "outcome": "loss", "floor": 3})
-        bridge.run(lambda decision: [0, 2])
+        mod.send(RUN_END)
+        self.bridge.play(lambda decision: [0, 2])
         self.assertEqual(mod.receive(), {"type": "action", "id": 1, "indices": [0, 2]})
         mod.close()
 
-    def test_disconnect_before_run_end_fails(self):
-        bridge = Bridge(accept_timeout=5)
-        mod = connect(bridge)
+    def test_disconnect_fails(self):
+        mod = connect(self.bridge)
         mod.send(DECISION)
         mod.close()
-        with self.assertRaisesRegex(BridgeError, "closed the connection before the run ended"):
-            bridge.run(lambda decision: 0)
+        with self.assertRaisesRegex(BridgeError, "closed the connection"):
+            self.bridge.play(lambda decision: 0)
+
+    def test_silence_times_out(self):
+        mod = connect(self.bridge)
+        with self.assertRaises(TimeoutError):
+            self.bridge.next(timeout=0.2)
+        mod.close()
 
     def test_line_that_is_not_json_fails(self):
-        bridge = Bridge(accept_timeout=5)
-        mod = connect(bridge)
+        mod = connect(self.bridge)
         mod.send_raw("not json")
         with self.assertRaisesRegex(BridgeError, "not JSON"):
-            bridge.run(lambda decision: 0)
+            self.bridge.play(lambda decision: 0)
         mod.close()
 
     def test_unknown_message_type_fails(self):
-        bridge = Bridge(accept_timeout=5)
-        mod = connect(bridge)
+        mod = connect(self.bridge)
         mod.send({"type": "surprise"})
         with self.assertRaisesRegex(BridgeError, "expected decision or run_end, got 'surprise'"):
-            bridge.run(lambda decision: 0)
+            self.bridge.play(lambda decision: 0)
         mod.close()
 
 
@@ -163,35 +190,45 @@ class RandomPickTest(unittest.TestCase):
 
 
 class RandomAgentTest(unittest.TestCase):
-    """Runs random_agent.py as tools/run.sh does, against a fake mod."""
+    """Runs the random agent as a separate process, with --no-launch, against a fake mod."""
 
-    def play(self, seed: int, decisions: int) -> list[int]:
-        agent = subprocess.Popen(
-            [sys.executable, "-m", "agent.random_agent", "--seed", str(seed)], cwd=Path(__file__).parents[2],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        self.assertEqual(agent.stdout.readline().strip(), f"seed={seed}", "the seed is printed first")
-        port = int(agent.stdout.readline().removeprefix("port="))
-        mod = FakeMod(port)
-        indices = []
-        for i in range(1, decisions + 1):
-            mod.send({**DECISION, "id": i, "actions": [{"kind": "end_turn"}] * 5})
-            answer = mod.receive()
-            self.assertEqual(answer["id"], i)
-            self.assertIn(answer["index"], range(5))
-            indices.append(answer["index"])
-        mod.send({"type": "run_end", "outcome": "loss", "floor": 2})
-        out, err = agent.communicate(timeout=10)
-        mod.close()
+    def play(self, seed: int, runs: int, decisions: int) -> tuple[list[str], list[int]]:
+        with tempfile.TemporaryDirectory() as cwd:
+            agent = subprocess.Popen(
+                [sys.executable, "-m", "agent.random_agent", "--seed", str(seed), "--runs", str(runs), "--no-launch"],
+                cwd=cwd, env={**os.environ, "PYTHONPATH": str(Path(__file__).parents[2])},
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.assertEqual(agent.stdout.readline().strip(), f"seed={seed}", "the seed is printed first")
+            port = int(agent.stdout.readline().removeprefix("port="))
+            mod = FakeMod(port)
+            seeds, indices = [], []
+            for _ in range(runs):
+                mod.send({"type": "ready"})
+                start = mod.receive()
+                self.assertEqual((start["type"], start["character"]), ("start", "IRONCLAD"))
+                seeds.append(start["seed"])
+                for i in range(1, decisions + 1):
+                    mod.send({**DECISION, "id": i, "actions": [{"kind": "end_turn"}] * 5})
+                    answer = mod.receive()
+                    self.assertEqual(answer["id"], i)
+                    indices.append(answer["index"])
+                mod.send({**RUN_END, "seed": start["seed"]})
+            mod.send({"type": "ready"})
+            self.assertIsNone(mod.receive(), "the agent closes the connection at the last ready")
+            out, err = agent.communicate(timeout=10)
+            mod.close()
         self.assertEqual(agent.returncode, 0, err)
-        self.assertRegex(out, rf"agent_seed={seed} decisions={decisions} per_second=[0-9.]+")
-        return indices
+        self.assertEqual(out.count("outcome=loss"), runs)
+        self.assertRegex(out, rf"agent_seed={seed} runs={runs} decisions={runs * decisions} per_second=[0-9.]+")
+        return seeds, indices
 
-    def test_same_seed_same_choices(self):
-        self.assertEqual(self.play(seed=1, decisions=20), self.play(seed=1, decisions=20))
+    def test_same_seed_same_runs(self):
+        self.assertEqual(self.play(seed=1, runs=2, decisions=10), self.play(seed=1, runs=2, decisions=10))
 
-    def test_choices_follow_the_seed(self):
-        expected = [random.Random(7).randrange(5) for _ in range(1)]
-        self.assertEqual(self.play(seed=7, decisions=1), expected)
+    def test_game_seeds_differ_between_runs_and_use_the_game_alphabet(self):
+        seeds, _ = self.play(seed=7, runs=3, decisions=1)
+        self.assertEqual(len(set(seeds)), 3)
+        self.assertTrue(all(len(s) == 10 and set(s) <= set(random_agent.SEED_CHARACTERS) for s in seeds))
 
 
 if __name__ == "__main__":

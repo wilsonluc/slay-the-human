@@ -2,25 +2,43 @@
 
 How the mod and the Python agent talk during an unattended run. This file is the protocol's single definition: the mod (`mod/Bridge.cs` and the `mod/Agent*.cs` decisions) and the agent (`agent/bridge.py`) follow it, and `tools/test.sh` checks both use the version below.
 
-Protocol version: **3**
+Protocol version: **4**
 
 Change the version whenever a message changes shape, in the same PR as both sides.
 
 ## Connection
 
-- The agent listens on TCP `127.0.0.1` and prints the port. `tools/run.sh` passes it to the game as `--slay-the-human-agent-port=<port>`.
-- The mod connects once, at the run's first decision, and keeps the connection until the run ends.
+- The agent listens on TCP `127.0.0.1` and launches the game with `--slay-the-human-agent-port=<port>` (`agent/env/games.py`).
+- The mod connects once, at the first main menu, and keeps the connection for the whole game process: the game plays runs back to back, and the agent starts each one.
 - Each message is one JSON object on one line, UTF-8, ending in `\n`.
-- Only the mod asks and only the agent answers, one answer per question, in order.
+- Within a run, only the mod asks and only the agent answers, one answer per question, in order.
+- The agent closing the connection while the game waits at `ready` quits the game with exit code 0. A run that fails inside the game quits it with exit code 1, and the agent sees the connection close.
 
 ## Messages
 
 ### hello (both ways)
 
-Sent by each side right after connecting. If the versions differ, the side that notices closes the connection and fails with both versions in its error.
+Sent by each side right after connecting. If the versions differ, the side that notices closes the connection and fails with both versions in its error. The mod's also names the game it runs, from the game's `release_info.json`.
 
 ```json
-{"type": "hello", "protocol": 3}
+{"type": "hello", "protocol": 4, "game_version": "v0.107.1", "game_commit": "59260271"}
+{"type": "hello", "protocol": 4}
+```
+
+### ready (mod to agent)
+
+Sent when the game is at the main menu, waiting for a run: after the hellos, and after each run ends.
+
+```json
+{"type": "ready"}
+```
+
+### start (agent to mod)
+
+The answer to `ready`: starts a run with this seed (letters and digits; `null` for a new random one) and character ID. The game waits for it as long as it takes.
+
+```json
+{"type": "start", "seed": "7KQ2M0AB9C", "character": "IRONCLAD"}
 ```
 
 ### decision (mod to agent)
@@ -50,10 +68,10 @@ The mod ends the run as an error, and never chooses on its own, when:
 
 ### run_end (mod to agent)
 
-Sent once when the run ends, after which the mod closes the connection.
+Sent once when the run ends, with the seed as the game canonicalised it. The connection stays open, and the next message is `ready`.
 
 ```json
-{"type": "run_end", "outcome": "win", "floor": 48}
+{"type": "run_end", "outcome": "win", "floor": 48, "seed": "7KQ2M0AB9C"}
 ```
 
 `outcome` is `win` or `loss`. A connection that closes without `run_end` means the run failed; the mod's log says why.

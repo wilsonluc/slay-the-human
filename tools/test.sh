@@ -10,7 +10,7 @@ failed=0
 # A copy of the repo, so no run touches the real decompiled/.
 repo="$tmp/repo"
 mkdir -p "$repo/tools" "$tmp/bin" "$tmp/empty"
-cp "$root/tools/decompile.sh" "$root/tools/game.sh" "$root/tools/mod.sh" "$root/tools/run.sh" "$repo/tools/"
+cp "$root/tools/decompile.sh" "$root/tools/game.sh" "$root/tools/mod.sh" "$root/tools/copy-game.sh" "$repo/tools/"
 cp "$root/GAME_VERSION.md" "$repo/"
 want=$(sed -n 's/^| Slay the Spire 2 (Steam build ID) | \([0-9]*\) |.*/\1/p' "$repo/GAME_VERSION.md")
 
@@ -76,14 +76,8 @@ check 'mod: build mismatch installs nothing' eval '[ $code = 1 ] && has "install
 run mod 0x1 "$steam" --any-build
 check 'mod: --any-build passes the check' eval 'has "Building SlayTheHuman for build 1" && ! has "targets"'
 
-run run 0x1 "$steam" --any-build
-check 'run: Steam not running stops before launching' eval '[ $code = 1 ] && has "Steam is not running" && [ ! -e "$repo/runs" ]'
-
-run run 0x1 "$steam" --any-build --seed=bad-seed
-check 'run: bad seed' eval '[ $code = 1 ] && has "letters and digits only"'
-
-run run 0x1 "$steam" --any-build --bogus
-check 'run: unknown option' eval '[ $code = 2 ] && has "--seed=<seed>"'
+run copy-game 0x1 "$steam"
+check 'copy-game: another build is refused before copying' eval '[ $code = 1 ] && has "targets" && [ ! -e "$repo/games" ]'
 
 # docs/protocol.md is the protocol's single definition; the mod and the agent must use its version.
 doc_version=$(sed -n 's/^Protocol version: \*\*\([0-9]*\)\*\*$/\1/p' "$root/docs/protocol.md")

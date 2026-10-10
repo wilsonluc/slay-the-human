@@ -1,20 +1,34 @@
-"""Makes every decision at random: a stand-in agent that exercises the bridge (specs 004 to 006).
+"""Makes every decision at random: a stand-in agent that exercises the bridge and the game.
 
-    python -m agent.random_agent [--seed N] [--trace FILE]
+    python -m agent.random_agent [--runs N] [--seed N] [--game-seed SEED] [--character ID] [--time-scale X]
+                                 [--no-launch]
 
-Prints seed=<n> first, port=<n> once listening (for tools/run.sh), and at the end
-agent_seed=<n> decisions=<n> per_second=<x>, where per_second is over the whole run.
-With --trace, writes each decision and the answer given as one JSON line.
+Launches one game from the game copy (agent/env/games.py) and plays N runs back to back in it. Prints seed=<n> first,
+then one line per run: seed= character= outcome= floor= decisions= per_second= trace=, and at the end the totals.
+Game seeds come from the agent seed, so the same --seed replays the same runs; --game-seed fixes the first run's.
+--no-launch prints port=<n> and waits for a game launched some other way to connect. Game logs and traces go in
+runs/<time>/.
 """
 
 import argparse
-import contextlib
 import json
 import random
+import subprocess
 import sys
 import time
+from datetime import datetime
+from pathlib import Path
 
 from agent.bridge import Bridge, BridgeError
+from agent.env import games
+
+# The game's own seed alphabet: no I or O, which it reads as 1 and 0.
+SEED_CHARACTERS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+MESSAGE_TIMEOUT = 120.0
+
+
+def game_seed(rng: random.Random) -> str:
+    return "".join(rng.choice(SEED_CHARACTERS) for _ in range(10))
 
 
 def pick(decision: dict, rng: random.Random) -> int | list[int]:
@@ -27,38 +41,80 @@ def pick(decision: dict, rng: random.Random) -> int | list[int]:
     return rng.randrange(len(decision["actions"]))
 
 
+def play_runs(bridge: Bridge, runs: int, rng: random.Random, character: str, out: Path, first_seed: str | None = None):
+    """Plays runs back to back on a connected game, then closes the connection. Yields one summary dict per run."""
+    for number in range(1, runs + 1):
+        seed = first_seed if number == 1 and first_seed else game_seed(rng)
+        trace_path = out / f"run-{number}.trace.jsonl"
+        decisions = 0
+        with trace_path.open("w", encoding="utf-8") as trace:
+
+            def choose(decision: dict) -> int | list[int]:
+                nonlocal decisions
+                decisions += 1
+                answer = pick(decision, rng)
+                trace.write(json.dumps({"decision": decision, "answer": answer}) + "\n")
+                return answer
+
+            bridge.start(seed, character, MESSAGE_TIMEOUT)
+            started = time.monotonic()
+            end = bridge.play(choose, MESSAGE_TIMEOUT)
+        elapsed = time.monotonic() - started
+        yield {"seed": end.get("seed", seed), "character": character, "outcome": end["outcome"], "floor": end["floor"],
+               "decisions": decisions, "per_second": decisions / elapsed if elapsed else 0.0, "trace": trace_path}
+    # Close only once the game is back at the main menu, so it quits cleanly instead of failing a write.
+    ready = bridge.receive(MESSAGE_TIMEOUT)
+    if ready.get("type") != "ready":
+        raise BridgeError(f"expected ready, got {ready.get('type')!r}")
+    bridge.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--seed", type=int, help="seed for the choices (default: a new random one)")
-    parser.add_argument("--trace", help="file to write each decision and choice to, as JSON lines")
+    parser.add_argument("--runs", type=int, default=1, help="runs to play in one game process (default 1)")
+    parser.add_argument("--seed", type=int, help="seed for the choices and game seeds (default: a new random one)")
+    parser.add_argument("--game-seed", help="the first run's game seed (default: drawn from --seed)")
+    parser.add_argument("--character", default="IRONCLAD", help="character ID (default IRONCLAD)")
+    parser.add_argument("--time-scale", type=float, default=20, help="game speed (default 20)")
+    parser.add_argument("--no-launch", action="store_true", help="wait for a game launched some other way")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
     rng = random.Random(seed)
-    decisions = 0
+    out = Path("runs") / datetime.now().strftime("%Y%m%d-%H%M%S")
+    out.mkdir(parents=True, exist_ok=True)
+    # The seed first, so runs that fail can still be replayed.
+    print(f"seed={seed}", flush=True)
 
-    with open(args.trace, "w", encoding="utf-8") if args.trace else contextlib.nullcontext() as trace:
-
-        def choose(decision: dict) -> int | list[int]:
-            nonlocal decisions
-            decisions += 1
-            answer = pick(decision, rng)
-            if trace:
-                trace.write(json.dumps({"decision": decision, "answer": answer}) + "\n")
-            return answer
-
-        try:
-            # The seed first, so a run that fails can still be replayed.
-            print(f"seed={seed}", flush=True)
-            bridge = Bridge()
+    bridge = Bridge()
+    game = None
+    log = out / "game.log"
+    total_decisions, began = 0, time.monotonic()
+    try:
+        if args.no_launch:
             print(f"port={bridge.port}", flush=True)
-            bridge.accept()
-            start = time.monotonic()
-            bridge.run(choose)
-        except BridgeError as e:
-            print(f"agent: {e}", file=sys.stderr)
-            return 1
-    elapsed = time.monotonic() - start
-    print(f"agent_seed={seed} decisions={decisions} per_second={decisions / elapsed:.1f}", flush=True)
+        else:
+            game = games.launch(bridge.port, log.resolve(), args.time_scale)
+        bridge.accept()
+        for run in play_runs(bridge, args.runs, rng, args.character, out, args.game_seed):
+            total_decisions += run["decisions"]
+            print(" ".join(f"{key}={value:.1f}" if isinstance(value, float) else f"{key}={value}"
+                           for key, value in run.items()), flush=True)
+        if game and (code := game.wait(timeout=60)) != 0:
+            raise BridgeError(f"the game exited with code {code}")
+    except (BridgeError, TimeoutError, games.GameCopyError, subprocess.TimeoutExpired) as e:
+        print(f"agent: {e or type(e).__name__}", file=sys.stderr)
+        if log.exists():
+            errors = [line for line in log.read_text(encoding="utf-8", errors="replace").splitlines()
+                      if "run error" in line or "RunFailed" in line]
+            for line in errors[-3:]:
+                print(f"game: {line}", file=sys.stderr)
+        return 1
+    finally:
+        if game and game.poll() is None:
+            game.kill()
+    elapsed = time.monotonic() - began
+    print(f"agent_seed={seed} runs={args.runs} decisions={total_decisions} per_second={total_decisions / elapsed:.1f} "
+          f"log={log}", flush=True)
     return 0
 
 

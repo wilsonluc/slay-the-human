@@ -20,3 +20,6 @@ obj/
 
 # Game logs of unattended runs, written by tools/run.sh
 /runs/
+
+# Python bytecode
+__pycache__/

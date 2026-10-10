@@ -2,7 +2,7 @@
 
 ## Approach
 
-**Who connects to whom.** The Python agent listens; the game connects. That way the Python side owns the loop, which suits the training environment in spec 006. `tools/run.sh` starts the agent first, reads the port it chose, and passes it to the game as `--slay-the-human-agent-port=<port>`. The bridge is on only when that argument is present, so a normal launch opens nothing.
+**Who connects to whom.** The Python agent listens; the game connects. That way the Python side owns the loop, which suits the training environment in spec 006. `tools/run.sh` starts the agent first, reads the port it chose, and passes it to the game as `--slay-the-human-agent-port=<port>`. The mod connects at the run's first combat. The bridge is on only when that argument is present, so a normal launch opens nothing.
 
 **Transport and protocol.** TCP on `127.0.0.1`, one JSON object per line (UTF-8). `docs/protocol.md` defines every message; the protocol version is a constant in the mod and in the agent, and `tools/test.sh` checks both match the doc.
 
@@ -35,7 +35,7 @@ AutoSlay's other handlers, its card selector, room loop and watchdog are unchang
 
 **The agent** (`agent/`, Python 3.13, standard library only):
 - `agent/bridge.py`: listens, accepts one connection, does the handshake, yields decisions, sends actions, and returns the run end. It raises on a protocol mismatch, a bad message, or a connection closed before `run_end`.
-- `agent/random_agent.py`: picks a uniformly random index with `random.Random(seed)`; `--seed` defaults to a random one. It prints `port=<n>` when listening, and at the end `agent_seed=<n> decisions=<n> per_second=<x>`.
+- `agent/random_agent.py`: picks a uniformly random index with `random.Random(seed)`; `--seed` defaults to a random one. It prints `port=<n>` when listening, and at the end `agent_seed=<n> decisions=<n> per_second=<x>`. With `--trace`, it writes every decision and its choice as JSON lines; `tools/run.sh` keeps that trace in `runs/`.
 
 **The command.** `sh tools/run.sh [--seed=<seed>] [--agent-seed=<n>] [--time-scale=<n>]` starts the agent, launches the game with the agent's port, and appends the agent's final line to the summary. If the agent exits with an error, the command stops the game and exits 1 with the agent's message.
 
@@ -58,7 +58,7 @@ AutoSlay's other handlers, its card selector, room loop and watchdog are unchang
 - State contents → the agent's tests check a recorded decision message has every field; one real decision message from a run is checked by hand against the spec's list.
 - Only legal actions → over a full run, every action the random agent picks is carried out without a refusal (any refusal fails the run).
 - Energy is spent, no buffs → in a run's log, no Plating or Regen applied by AutoSlay, and the energy in the state after a played card is lower by its cost.
-- Errors → agent tests with a fake mod: an out-of-range index, a disconnect and a timeout each end with the reason. In the game: an agent built to answer an index out of range ends the run with that reason, and the command exits 1.
+- Errors → agent tests with a fake mod: a disconnect, a bad message and no connection each end with the reason. In the game, the mod's checks: agents changed to answer an index out of range, or to answer after 35 seconds, each end the run with that reason, and the command exits 1.
 - Version mismatch → agent test with a fake mod sending another version; and one real run with the agent's version changed.
 - Same seeds, same run → two runs with `--seed=TEST1 --agent-seed=1`: identical `room` lines, outcome, floor, and the same sequence of action indices.
 - One protocol definition → `docs/protocol.md`; `tools/test.sh` checks the version.

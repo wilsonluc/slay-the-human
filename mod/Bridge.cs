@@ -19,7 +19,7 @@ namespace SlayTheHuman;
 internal static class Bridge
 {
     /// <summary>The protocol version in docs/protocol.md. tools/test.sh checks the agent uses the same.</summary>
-    public const int Protocol = 2;
+    public const int Protocol = 3;
 
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(30);
@@ -30,6 +30,7 @@ internal static class Bridge
     private static StreamReader? _reader;
     private static StreamWriter? _writer;
     private static int _lastId;
+    private static readonly SemaphoreSlim Turn = new(1, 1);
 
     public static bool IsOn => PortArgument is not null;
 
@@ -115,24 +116,36 @@ internal static class Bridge
         return indices;
     }
 
+    /// <summary>
+    /// One question and its answer. The game can ask for a choice while another is waiting (a relic's card selection
+    /// when a room opens, for example), so questions take turns: the protocol has one question in flight at a time.
+    /// </summary>
     private static async Task<JsonObject> AskAsync(string kind, JsonObject state, JsonArray actions, CancellationToken ct)
     {
-        await EnsureConnectedAsync(ct);
-        var id = ++_lastId;
-        await SendAsync(new JsonObject
+        await Turn.WaitAsync(ct);
+        try
         {
-            ["type"] = "decision", ["id"] = id, ["kind"] = kind, ["state"] = state, ["actions"] = actions,
-        });
-        var answer = await ReceiveAsync(AnswerTimeout, ct);
-        if ((string?)answer["type"] != "action")
-        {
-            throw new BridgeException($"expected action from the agent, got {answer["type"]?.ToJsonString() ?? "nothing"}");
+            await EnsureConnectedAsync(ct);
+            var id = ++_lastId;
+            await SendAsync(new JsonObject
+            {
+                ["type"] = "decision", ["id"] = id, ["kind"] = kind, ["state"] = state, ["actions"] = actions,
+            });
+            var answer = await ReceiveAsync(AnswerTimeout, ct);
+            if ((string?)answer["type"] != "action")
+            {
+                throw new BridgeException($"expected action from the agent, got {answer["type"]?.ToJsonString() ?? "nothing"}");
+            }
+            if (answer["id"] is not JsonValue idValue || !idValue.TryGetValue<int>(out var answeredId) || answeredId != id)
+            {
+                throw new BridgeException($"the agent answered decision {answer["id"]?.ToJsonString()}, not {id}");
+            }
+            return answer;
         }
-        if (answer["id"] is not JsonValue idValue || !idValue.TryGetValue<int>(out var answeredId) || answeredId != id)
+        finally
         {
-            throw new BridgeException($"the agent answered decision {answer["id"]?.ToJsonString()}, not {id}");
+            Turn.Release();
         }
-        return answer;
     }
 
     /// <summary>Tells the agent how the run ended and closes the connection. Does nothing when not connected.</summary>

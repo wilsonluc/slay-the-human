@@ -1,6 +1,6 @@
 # 004: Combat bridge
 
-Status: draft
+Status: approved
 
 ## Problem
 
@@ -19,6 +19,7 @@ During an unattended run, every combat decision goes to a Python program: the mo
 - The training environment, observation encoding and action masks for PPO (spec 006).
 - A smart agent. The client picks at random.
 - Several games or agents at once.
+- Adapting the mod's patches automatically when a game update renames the methods they hook. A failed patch still stops the mod with an error naming it.
 
 ## Acceptance criteria
 

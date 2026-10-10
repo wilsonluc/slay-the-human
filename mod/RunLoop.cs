@@ -26,6 +26,9 @@ internal static class RunLoop
 
     private static bool _started;
 
+    /// <summary>The AutoSlayer playing the current run.</summary>
+    public static AutoSlayer? Slayer { get; private set; }
+
     private static bool Prepare() => RunMode.IsOn;
 
     private static void Postfix()
@@ -73,7 +76,8 @@ internal static class RunLoop
                 RunCounters.Reset();
                 SelectionPurpose.Reset();
                 Log.Info($"[{ModEntry.Id}] run start seed={RunMode.Seed} character={RunMode.Character}");
-                new AutoSlayer().Start(RunMode.Seed);
+                Slayer = new AutoSlayer();
+                Slayer.Start(RunMode.Seed);
             }
         }
         catch (Exception e)

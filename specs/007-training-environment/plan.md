@@ -61,7 +61,7 @@ The game waits for the agent as long as it takes; hangs are caught in Python. In
 - AutoSlay's timeouts are `static readonly`, so they are patched where used. `mod/RunTiming.cs` has one transpiler on AutoSlay's async state machines: in `WaitHelper.WithTimeout` the deadline delay becomes infinite (room and screen handler timeouts, the 25-minute run timeout); in `WaitHelper.Until` and `ForTask` the timeout's token source never cancels.
 - AutoSlay's watchdog, which fails a run after 30 seconds without progress, is turned off by a prefix on its check.
 - The same transpiler replaces every other delay in AutoSlay's code with one frame: after rooms, the overlay drain, polling, `UiHelper.Click`, ancient dialogue clicks. Patching state machines rather than methods avoids inlined async stubs. It logs how many methods and calls it changed, and stops the mod at startup if it changed none.
-- Every `Wait.For` in the mod (a wait that may legitimately time out) becomes a `Wait.Until` on every outcome it can have: a reward claim waits for the reward button's claimed or skipped signal; after an event option, the wait for the event's response also watches for the give-up confirmation; a closed event room waits for a combat, a screen or the map; an event resumed after combat waits for options, the map, a screen or the room closing. `Wait.For` is deleted.
+- Every `Wait.For` in the mod (a wait that may legitimately time out) becomes a `Wait.Until` on every outcome it can have: a reward claim waits for the reward button's claimed or skipped signal; after an event option, the wait for the event's response also watches for the give-up confirmation; a closed event room waits for a combat, a screen or the map; an event resumed after combat waits for options, the map, a screen or the room closing. A screen an event opens while its room stays up (an option's rewards, with more options after) is handled by AutoSlay's screen loop from inside the event, which then carries on. `Wait.For` is deleted.
 
 **Frame cap.** Headless, the game caps frames at the settings' limit (60). Removing the cap in run mode was measured and dropped: with 4 games, 7 of 62 runs failed against none of 120 with the cap, and one game's memory grew past 5 GB.
 
@@ -170,6 +170,7 @@ It runs one thread per game and prints steps per second (per game and total), ru
 - `mod/RunLoop.cs` (replaces `mod/StartAutoSlay.cs`): the run loop, the game kept open after a run that ended normally, per-run reset, the unlock check.
 - `mod/RunProfile.cs`: the unlock prefixes, the fixed in-memory profile, no progress writes.
 - `mod/RunTiming.cs`: AutoSlay's delays become one frame, its timeouts and watchdog off.
+- `mod/NoCardTrails.cs`: the flying-card trail draws nothing (its gap-filling loop can run forever after a far jump, filling memory).
 - `mod/Wait.cs`: `Until` logs instead of throwing; `For` removed.
 - `mod/RunMode.cs`, `mod/RunLog.cs`: per-run seed and character; room handler attached once; end flag reset; combat counters.
 - `mod/GameState.cs`: the run, map, combat and card objects, moved from `Decision.cs`, `CombatSnapshot.cs` and `AgentMap.cs`.
@@ -215,6 +216,7 @@ It runs one thread per game and prints steps per second (per game and total), ru
 - Removing fixed waits exposes races (a click before the UI is ready) → each wait becomes a wait on a named state; full runs and the determinism checks find what remains.
 - With no in-game timeouts, a real hang waits for Python's hang detection → the game log keeps a "still waiting" line naming the state.
 - A long-lived process can leak state or memory across runs → per-run resets; the "after other runs" determinism check; memory watched over 50 runs, with a restart every N runs only if it grows.
+- A game can freeze or allocate without bound (seen: the card trail's loop) → Python's hang detection and a memory limit per game (4 GB) stop it and fail the run; stack dumps of a frozen game find the cause.
 - The fixed profile could miss a progress read that changes content → the two-profile and after-other-runs checks.
 - The game might write into its own folder, breaking the hash → checked after the first runs; such files excluded by name if found.
 - The vocabulary could miss a string value (an event or dialogue key) → fails loudly; a sweep of random runs before the file is committed.

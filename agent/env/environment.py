@@ -17,6 +17,7 @@ outcome, floor, steps, reward term results, failure reason and the action indice
 import json
 import logging
 import subprocess
+import threading
 import random
 from pathlib import Path
 
@@ -30,6 +31,10 @@ from agent.env.vocabulary import Vocabulary
 SEED_CHARACTERS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 
 log = logging.getLogger(__name__)
+
+# Environments in threads of one process share a run folder's summary.jsonl; appends from two threads can overwrite
+# each other on Windows.
+_summary_lock = threading.Lock()
 
 
 class IllegalAction(Exception):
@@ -239,7 +244,7 @@ class Environment:
                 for row in self._trace:
                     trace.write(json.dumps(row) + "\n")
                 trace.write(json.dumps({"end": record}) + "\n")
-        with (self.out / "summary.jsonl").open("a", encoding="utf-8") as summary:
+        with _summary_lock, (self.out / "summary.jsonl").open("a", encoding="utf-8") as summary:
             summary.write(json.dumps({"game": self.name, "run": self._runs, **record}) + "\n")
 
     def _info(self, outcome, outcome_reward: float = 0.0) -> dict:

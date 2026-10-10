@@ -33,25 +33,34 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 6. Build and install the mod, with the game closed: `sh tools/mod.sh`. It builds `mod/` against the game's own assemblies and installs it into the game's `mods/SlayTheHuman/` folder.
 7. The first time, start the game and answer **Yes** to its mods warning. The game saves the answer and quits. From the next start, it loads the mod, and `%APPDATA%\SlayTheSpire2\logs\godot.log` shows lines starting `[SlayTheHuman]`.
 
-## Unattended runs
+## Unattended runs and the training environment
 
-Unattended runs use a copy of the game per build, which Steam never updates: make it once with `sh tools/copy-game.sh`, then run `sh tools/mod.sh` again so the copy gets the mod. Install the agent's packages with `pip install -e .` (Python 3.13).
+Unattended runs use a copy of the game per build, which Steam never updates: make it once with `sh tools/copy-game.sh` and record the hash it prints in `GAME_VERSION.md`, then run `sh tools/mod.sh` again so the copy gets the mod. Install the agent's packages with `pip install -e .` (Python 3.13).
 
-With Steam running, `python -m agent.random_agent --runs 3` launches the game copy with no window and at 20x game speed, and plays three full runs back to back in it with nobody at the keyboard. The random agent makes every decision in each run (combat, map, rewards, card rewards, rest sites, card selections, events, shops, treasure, bundles and the Crystal Sphere) over the bridge described in `docs/protocol.md`, and the mod carries out its choices the way a player would. The game's built-in AutoSlay bot only drives the screens around them: menus, dialogue and transitions. It prints a line per run, then the totals:
+The training environment (`agent/env/`) drives the game a step at a time in the Gymnasium shape: `reset()` starts a run, `step(action)` returns the next observation, the reward, whether the run ended and why, and `action_masks()` the legal actions. Each environment owns one game process that plays runs back to back; several run at once, each launched directly from the game copy (Steam must be running) once the one before reaches its main menu. Every decision comes as a fixed-shape observation (`encoding.py`), every action has its own index in one action space, and the reward is defined in `reward.py`. The game waits for each action as long as it takes; a game that stops or sends nothing for 120 seconds ends its run as truncated and is launched again.
+
+`python -m agent.random_agent` plays runs with random legal actions through the environment, and is the speed command:
 
 ```
-seed=1
-seed=7KQ2M0AB9C character=IRONCLAD outcome=loss floor=4 decisions=50 per_second=7.3 trace=runs/20261010-165634/run-1.trace.jsonl
-agent_seed=1 runs=3 decisions=161 per_second=6.9 log=runs/20261010-165634/game.log
+python -m agent.random_agent --games 4 --runs 120 --seed 41
+seed=41
+game=game0 seed=WSLL2KN1WJ outcome=loss floor=5 steps=44 per_second=13.1
+...
+agent_seed=41 games=4 runs=120 steps=6671 steps_per_second=27.7 per_game=6.9 runs_per_hour=1794 mean_floor=5.1 max_floor=13 launch_seconds=57 out=runs\20261010-230057
+largest choices=20 deck=20 discard=20 ...
 ```
 
-- `--character <id>` picks the character (`IRONCLAD`, the default, `SILENT`, `DEFECT`, `NECROBINDER` or `REGENT`).
-- `--seed <n>` replays a set of runs: with the same character, the same agent seed draws the same game seeds and makes the same decisions. `--game-seed <seed>` fixes the first run's game seed.
-- `--time-scale <n>` sets the game speed (default 20; past about 10 the gain is small).
-- The game log and a trace of every decision and choice in each run (`.trace.jsonl`) are kept in `runs/` (gitignored).
-- A run ends as an error, and the command exits 1 with the reason, if the agent picks an action that is not listed (or a card selection outside its limits), disconnects, or speaks another protocol version, or if the game sends nothing for 120 seconds or exits mid-run. Nothing ever picks an action in the agent's place.
-- Runs use the game's separate modded profile and save nothing, so your own saves, stats and achievements are untouched.
+- `--games <n>` runs that many games at once, about one per CPU core at most; `--runs <n>` is the total, shared equally between them.
+- `--seed <n>` replays a set of runs: the same agent seed gives every game the same game seeds and the same choices. `--replay runs/<time>/summary.jsonl --row <i>` replays one run and checks it ends the same.
+- `--character <id>` picks the character (`IRONCLAD`, the default; the observation does not yet carry Defect's orbs or Necrobinder's Osty).
+- `--trace-every <n>` keeps a full trace of one run in that many (default 100); failed runs always keep theirs. Every run adds a row to `summary.jsonl`, with its seed and action indices.
+- `--think-seconds <s> --think-count <n>` pauses before the first actions, to check the game waits.
+- Game logs, traces and summaries go in `runs/` (gitignored).
+- An action the mask does not allow raises, and the run ends as an error. Nothing ever picks an action in the agent's place.
+- Runs fix every unlock and save nothing, so they neither depend on nor change your profile, saves, stats or achievements.
 - A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started with them.
+
+When the game updates, `python -m agent.env.vocabulary --update` appends the new build's names to `agent/env/vocabulary.json`; existing indices never move.
 
 Run the agent's tests with `python -m unittest discover -s agent/tests -t .`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
 

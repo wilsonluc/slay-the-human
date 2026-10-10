@@ -22,8 +22,8 @@ agent/
   bridge.py          the protocol client                                         004
   random_agent.py    random baseline; also the baseline row in evaluation         004
   env/                                                                            007
-    environment.py   reset/step in the Gymnasium shape; one game process, runs back to back
-    games.py         launches and supervises several game processes, one environment each
+    environment.py   reset/step in the Gymnasium shape; one game process, runs back to back; several launched in turn
+    games.py         finds the game copy for the build, checks its hash, and launches a game from it
     encoding.py      observation as a dict of padded arrays with presence masks; action index <-> game action; mask
     vocabulary.py    every ID and named value of the targeted build -> index; append-only, with a content hash
     vocabulary.json  the committed vocabulary, made from the game build by the mod

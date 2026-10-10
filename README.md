@@ -33,6 +33,20 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 6. Build and install the mod, with the game closed: `sh tools/mod.sh`. It builds `mod/` against the game's own assemblies and installs it into the game's `mods/SlayTheHuman/` folder.
 7. The first time, start the game and answer **Yes** to its mods warning. The game saves the answer and quits. From the next start, it loads the mod, and `%APPDATA%\SlayTheSpire2\logs\godot.log` shows lines starting `[SlayTheHuman]`.
 
+## Unattended runs
+
+With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It launches the game through Steam with no window and at 20x game speed, the game's built-in AutoSlay bot plays (a stand-in until the agent can), and it prints one line:
+
+```
+seed=TEST1 outcome=win floor=48 seconds=209 log=runs/20261010-141133.log
+```
+
+- `--seed=<seed>` replays a run: the same seed visits the same rooms and plays the same cards. Without it, each run gets a new random seed.
+- `--time-scale=<n>` sets the game speed (default 20; past about 10 the gain is small).
+- The run's full game log is kept in `runs/` (gitignored). If the run stops making progress for 120 seconds (`STALL_SECONDS`), or the game exits before the run ends, the command stops the game and exits 1 with the reason.
+- Runs use the game's separate modded profile and save nothing, so your own saves, stats and achievements are untouched.
+- A normal launch from Steam is unaffected: run mode is on only when the game is started by this command.
+
 ## Layout
 
 - `STANDARDS.md` — project-specific coding standards, on top of the generic [standards built into pr-reviewer](https://github.com/wilsonluc/pr-tools/blob/main/plugins/pr-reviewer/standards.md).
@@ -40,7 +54,7 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 - `GAME_VERSION.md` — the game build, Godot, and .NET versions this repo targets.
 - `.githooks/` — git hooks; enable with `git config core.hooksPath .githooks`.
 - `mod/` — the C# mod the game loads: its project, its manifest (`SlayTheHuman.json`) and its Harmony patches.
-- `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `mod.sh` builds and installs the mod; `game.sh` finds the game for both; `test.sh` checks how they refuse bad setups.
+- `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `mod.sh` builds and installs the mod; `run.sh` plays an unattended run; `game.sh` finds the game for all three; `test.sh` checks how they refuse bad setups.
 - `decompiled/` (gitignored, local only) — the game's C# source for the targeted build, made by `tools/decompile.sh`.
 - `specs/` — feature specs. Every feature starts as a spec; see `specs/README.md` for the process.
 - `.scrape/` (gitignored, local only) — reference material taken from [sts2-rl-agent](https://github.com/zhiyue/sts2-rl-agent): the C# bridge mod, a Python simulator, and docs. See `.scrape/NOTES.md`.

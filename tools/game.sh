@@ -1,13 +1,15 @@
-# Sourced by the scripts in tools/ (POSIX sh, Git Bash on Windows). Parses their one option, --any-build, moves to the
-# repo root, and defines find_game, which finds the installed game through Steam and checks its build against
-# GAME_VERSION.md. STEAM_DIR overrides the Steam folder found in the registry.
+# Sourced by the scripts in tools/ (POSIX sh, Git Bash on Windows). Parses their options, moves to the repo root, and
+# defines find_game, which finds the installed game through Steam and checks its build against GAME_VERSION.md.
+# STEAM_DIR overrides the Steam folder found in the registry.
+# Every script takes --any-build. A script with more options sets options (for the usage line) and defines
+# script_option, which takes one argument and returns non-zero when it is not one of its options, before sourcing this.
 script=$(basename "$0" .sh)
-usage="usage: sh tools/$script.sh [--any-build]"
+usage="usage: sh tools/$script.sh [--any-build]${options:+ $options}"
 any_build=''
 for arg; do
   case $arg in
   --any-build) any_build=1 ;;
-  *) echo "$usage" >&2; exit 2 ;;
+  *) { command -v script_option >/dev/null && script_option "$arg"; } || { echo "$usage" >&2; exit 2; } ;;
   esac
 done
 cd "$(dirname "$0")/.."

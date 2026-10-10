@@ -10,7 +10,7 @@ failed=0
 # A copy of the repo, so no run touches the real decompiled/.
 repo="$tmp/repo"
 mkdir -p "$repo/tools" "$tmp/bin" "$tmp/empty"
-cp "$root/tools/decompile.sh" "$root/tools/game.sh" "$root/tools/mod.sh" "$repo/tools/"
+cp "$root/tools/decompile.sh" "$root/tools/game.sh" "$root/tools/mod.sh" "$root/tools/run.sh" "$repo/tools/"
 cp "$root/GAME_VERSION.md" "$repo/"
 want=$(sed -n 's/^| Slay the Spire 2 (Steam build ID) | \([0-9]*\) |.*/\1/p' "$repo/GAME_VERSION.md")
 
@@ -24,6 +24,8 @@ esac
 EOF
 # A fake dotnet that always fails, so a run past the checks stops at its first dotnet call: no network, no decompiler.
 printf '#!/bin/sh\nexit 1\n' >"$tmp/bin/dotnet"
+# A fake tasklist that finds no process, so Steam looks closed. Fake steam.exe and taskkill would fail the test loudly.
+printf '#!/bin/sh\necho "INFO: No tasks are running which match the specified criteria."\n' >"$tmp/bin/tasklist"
 
 # A Steam install with two libraries: its own folder (no game) and a second one holding build 1 of the game.
 steam="$tmp/steam" lib="$tmp/library"
@@ -73,6 +75,15 @@ check 'mod: build mismatch installs nothing' eval '[ $code = 1 ] && has "install
 
 run mod 0x1 "$steam" --any-build
 check 'mod: --any-build passes the check' eval 'has "Building SlayTheHuman for build 1" && ! has "targets"'
+
+run run 0x1 "$steam" --any-build
+check 'run: Steam not running stops before launching' eval '[ $code = 1 ] && has "Steam is not running" && [ ! -e "$repo/runs" ]'
+
+run run 0x1 "$steam" --any-build --seed=bad-seed
+check 'run: bad seed' eval '[ $code = 1 ] && has "letters and digits only"'
+
+run run 0x1 "$steam" --any-build --bogus
+check 'run: unknown option' eval '[ $code = 2 ] && has "--seed=<seed>"'
 
 # The game reads only snake_case manifest keys and silently skips the DLL without "has_dll": true.
 out=$(tr -d ' \r\n' <"$root/mod/SlayTheHuman.json") code=-

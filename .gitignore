@@ -17,3 +17,6 @@ obj/
 # Decompiled game source, made by tools/decompile.sh (Mega Crit's code; never push)
 /decompiled/
 /decompiled.new/
+
+# Game logs of unattended runs, written by tools/run.sh
+/runs/

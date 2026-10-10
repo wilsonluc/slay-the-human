@@ -8,6 +8,7 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 - **Act**: one section of a run. Each act has its own map and ends with a boss.
 - **Room**: one node on the map: monster, elite, boss, event, shop, treasure, or rest site (the game's `RoomType`).
 - **Floor**: the count of rooms entered so far in the run (the game's `RunState.TotalFloor`). A floor is a game position, not a unit of training time.
+- **Ascension**: the run's difficulty level, 0 to 10 (the game's `AscensionLevel`). Levels are cumulative: ascension n has every modifier of the levels below it.
 - **Encounter**: the specific group of monsters a combat room uses (the game's `EncounterModel`).
 - **Combat**: one fight, from the start until all enemies are dead or the player is.
 - **Turn**: the player's phase inside a combat, when cards are played. The player ends it by ending the turn.
@@ -24,3 +25,11 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 - **Step**: one decision, the action taken, and the state that results. A step is the unit of training time.
 - **Episode**: everything from an environment reset to the end. Depending on the environment, that is one combat or one run.
 - **Rollout**: the batch of steps collected under the current policy before one PPO update.
+- **Checkpoint**: the saved policy weights at one point in training, with the record of what produced them.
+- **Evaluation**: measuring a checkpoint's win rate on a fixed set of evaluation seeds that training never uses, with the agent choosing its best action.
+- **Baseline**: an evaluation of a reference agent (random, then the first PPO agent) that a phase's target is set from.
+
+## Roadmap
+
+- **Phase**: a result the agent must reach, checked by an evaluation, such as Ironclad at ascension 0. `ROADMAP.md` lists them.
+- **Target**: the evaluation win rate that finishes a phase.

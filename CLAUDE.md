@@ -6,6 +6,8 @@ An RL agent for Slay the Spire 2. A C# mod drives the real game headless, and a 
 
 The repo uses spec-driven development. Feature code follows an approved spec in `specs/NNN-slug/`. Before starting any feature, or when changing behavior, read `specs/README.md` for the process and templates.
 
+`ROADMAP.md` sets the phases the specs serve (Ironclad ascension 0, then 1 to 10, then a decision). Before proposing the next spec, read it.
+
 ## Git
 
 Changes reach `main` only through pull requests. Name branches however you like.

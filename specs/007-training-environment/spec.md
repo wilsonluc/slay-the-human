@@ -41,7 +41,7 @@ Observation and actions:
 Reward:
 
 - [ ] The reward is defined in one place and documented there: `+1` for a win, `-1` for a loss, plus shaping terms. Each shaping term is potential-based, `w * (gamma * score(next state) - score(state))` with `gamma` the learner's discount, so it never changes which policy is best; the scores fall to zero when the run is terminated (a win or a loss), not when it is truncated. The scores are: floor reached as a fraction of a full run; HP as a fraction of max HP; combat progress over the run, which is the combats won plus the current combat's fraction of enemy HP removed (each summoned enemy's HP added when it appears), divided by the most combats a run can have, so finishing a fight never lowers it; and elites and bosses killed. Each term has its own weight, set in one place, chosen so the term's weighted score stays within ±1; the return then needs no scaling.
-- [ ] Every step's outcome reward and each term's score are kept in the run's trace, so the learner computes shaping with its own discount and changing the discount never rewrites stored rewards. Per run, the environment reports each term's discounted contribution, its highest score and its score just before the run ended, so a term the agent exploits shows up.
+- [ ] Every step gives the learner its outcome reward and each term's score, and full traces keep them, so the learner computes shaping with its own discount and changing the discount never rewrites stored rewards. Per run, the environment reports each term's discounted contribution, its highest score and its score just before the run ended, so a term the agent exploits shows up.
 
 Runs and failures:
 
@@ -54,6 +54,8 @@ Runs and failures:
 - [ ] Only a win or a loss is `terminated`. A run that fails (the game stops, or sends no decision within a set time after an action) ends its episode as `truncated`, with the reason, decision kind and floor logged as an error; that step returns the last decision's observation, and the info's outcome names the failure. The next `reset()` starts the game again if it has to.
 - [ ] A run that reaches a set number of steps ends as `truncated`, with the outcome naming the step limit.
 - [ ] The same seed and the same actions give the same observations, masks and rewards: in a fresh game process or after other runs, alone or alongside other game processes, with the machine otherwise idle or busy, and whatever the profile has unlocked.
+
+- [ ] Full traces are kept for evaluation runs, failed runs and a sample of training runs (one in a set number). Every other training run keeps one summary row: seed, outcome, floor, steps, each reward term's contribution and highest score, the failure reason, and its action indices, which replay the run exactly.
 
 Measurement and tests:
 

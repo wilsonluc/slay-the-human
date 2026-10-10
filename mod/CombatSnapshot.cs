@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Nodes;
 using MegaCrit.Sts2.Core.Combat;
@@ -15,36 +14,27 @@ using MegaCrit.Sts2.Core.Runs;
 namespace SlayTheHuman;
 
 /// <summary>
-/// One combat decision: the state and legal actions sent to the agent (docs/protocol.md), and how to carry out each
-/// action the way the game's own UI does.
+/// A combat decision (docs/protocol.md): the combat state, the legal actions, and how to carry out each the way the
+/// game's own UI does.
 /// </summary>
-internal sealed class CombatSnapshot
+internal static class CombatSnapshot
 {
-    public JsonObject State { get; } = new();
-    public JsonArray Actions { get; } = new();
-    private readonly List<Action> _execute = new();
-
-    public void Execute(int index) => _execute[index]();
-
-    public static CombatSnapshot Take(Player player)
+    public static Decision Take(Player player)
     {
-        var run = RunManager.Instance.DebugOnlyGetState() ?? throw new InvalidOperationException("no run in progress");
         var combat = player.PlayerCombatState ?? throw new InvalidOperationException("the player is not in combat");
         var me = player.Creature;
         var enemies = me.CombatState?.Enemies ?? throw new InvalidOperationException("no combat state");
         var hand = combat.Hand.Cards;
-        var snapshot = new CombatSnapshot();
+        var decision = new Decision("combat");
 
-        snapshot.State["act"] = run.CurrentActIndex + 1;
-        snapshot.State["floor"] = run.TotalFloor;
-        snapshot.State["turn"] = combat.TurnNumber;
-        snapshot.State["player"] = new JsonObject
+        decision.State["turn"] = combat.TurnNumber;
+        decision.State["player"] = new JsonObject
         {
             ["hp"] = me.CurrentHp, ["max_hp"] = me.MaxHp, ["block"] = me.Block,
             ["energy"] = combat.Energy, ["max_energy"] = combat.MaxEnergy, ["stars"] = combat.Stars,
             ["powers"] = Powers(me),
         };
-        snapshot.State["hand"] = new JsonArray(hand.Select(card => (JsonNode)new JsonObject
+        decision.State["hand"] = new JsonArray(hand.Select(card => (JsonNode)new JsonObject
         {
             ["id"] = card.Id.Entry,
             ["upgraded"] = card.IsUpgraded,
@@ -55,13 +45,10 @@ internal sealed class CombatSnapshot
             ["target"] = card.TargetType.ToString(),
             ["playable"] = card.CanPlay(out _, out _),
         }).ToArray());
-        snapshot.State["draw"] = combat.DrawPile.Cards.Count;
-        snapshot.State["discard"] = combat.DiscardPile.Cards.Count;
-        snapshot.State["exhaust"] = combat.ExhaustPile.Cards.Count;
-        snapshot.State["potions"] = new JsonArray(player.PotionSlots.Select(potion => potion is null
-            ? null
-            : (JsonNode)new JsonObject { ["id"] = potion.Id.Entry, ["target"] = potion.TargetType.ToString() }).ToArray());
-        snapshot.State["enemies"] = new JsonArray(enemies.Select(enemy => (JsonNode)new JsonObject
+        decision.State["draw"] = combat.DrawPile.Cards.Count;
+        decision.State["discard"] = combat.DiscardPile.Cards.Count;
+        decision.State["exhaust"] = combat.ExhaustPile.Cards.Count;
+        decision.State["enemies"] = new JsonArray(enemies.Select(enemy => (JsonNode)new JsonObject
         {
             ["id"] = enemy.Monster?.Id.Entry,
             ["alive"] = enemy.IsAlive,
@@ -81,7 +68,7 @@ internal sealed class CombatSnapshot
                     var target = enemies[e];
                     if (card.CanPlayTargeting(target))
                     {
-                        snapshot.Add(new JsonObject { ["kind"] = "play", ["card"] = cardIndex, ["target"] = e },
+                        decision.Add(new JsonObject { ["kind"] = "play", ["card"] = cardIndex, ["target"] = e },
                             () => Play(card, target));
                     }
                 }
@@ -89,7 +76,7 @@ internal sealed class CombatSnapshot
             else if (card.TargetType != TargetType.AnyAlly && card.CanPlayTargeting(null))
             {
                 // Every other target type is played with no target; an ally target needs another player.
-                snapshot.Add(new JsonObject { ["kind"] = "play", ["card"] = cardIndex, ["target"] = null },
+                decision.Add(new JsonObject { ["kind"] = "play", ["card"] = cardIndex, ["target"] = null },
                     () => Play(card, null));
             }
         }
@@ -109,7 +96,7 @@ internal sealed class CombatSnapshot
                     var target = enemies[e];
                     if (potion.IsValidTarget(target))
                     {
-                        snapshot.Add(new JsonObject { ["kind"] = "potion", ["slot"] = slotIndex, ["target"] = e },
+                        decision.Add(new JsonObject { ["kind"] = "potion", ["slot"] = slotIndex, ["target"] = e },
                             () => potion.EnqueueManualUse(target));
                     }
                 }
@@ -117,21 +104,15 @@ internal sealed class CombatSnapshot
             else if (potion.IsValidTarget(null) || potion.IsValidTarget(me))
             {
                 // With no target, the game fills in the player for potions aimed at themself.
-                snapshot.Add(new JsonObject { ["kind"] = "potion", ["slot"] = slotIndex, ["target"] = null },
+                decision.Add(new JsonObject { ["kind"] = "potion", ["slot"] = slotIndex, ["target"] = null },
                     () => potion.EnqueueManualUse(null));
             }
         }
 
         var turn = combat.TurnNumber;
-        snapshot.Add(new JsonObject { ["kind"] = "end_turn" },
+        decision.Add(new JsonObject { ["kind"] = "end_turn" },
             () => RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(player, turn)));
-        return snapshot;
-    }
-
-    private void Add(JsonObject action, Action execute)
-    {
-        Actions.Add(action);
-        _execute.Add(execute);
+        return decision;
     }
 
     private static void Play(CardModel card, Creature? target)

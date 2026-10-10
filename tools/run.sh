@@ -5,17 +5,19 @@
 # and time, and the agent's seed and decision count.
 # Windows only (Git Bash). Needs Steam running, the mod installed (sh tools/mod.sh) and Python 3.13 (PYTHON overrides
 # the python command).
-#   sh tools/run.sh [--seed=<seed>] [--agent-seed=<n>] [--time-scale=<n>] [--any-build]
-# Without --seed, the game picks a new random seed; without --agent-seed, the agent does. Each run's full game log and
+#   sh tools/run.sh [--seed=<seed>] [--agent-seed=<n>] [--character=<id>] [--time-scale=<n>] [--any-build]
+# Without --seed, the game picks a new random seed; without --agent-seed, the agent does; without --character, the
+# run is Ironclad's. Each run's full game log and
 # the agent's output and its trace of every decision are kept in runs/ (gitignored).
 # STALL_SECONDS (default 120) is how long the run may go without a new log line before it counts as stuck.
 set -eu
-seed='' agent_seed='' time_scale=20
-options='[--seed=<seed>] [--agent-seed=<n>] [--time-scale=<n>]'
+seed='' agent_seed='' character=IRONCLAD time_scale=20
+options='[--seed=<seed>] [--agent-seed=<n>] [--character=<id>] [--time-scale=<n>]'
 script_option() {
   case $1 in
   --seed=?*) seed=${1#--seed=} ;;
   --agent-seed=?*) agent_seed=${1#--agent-seed=} ;;
+  --character=?*) character=$(echo "${1#--character=}" | tr '[:lower:]' '[:upper:]') ;;
   --time-scale=?*) time_scale=${1#--time-scale=} ;;
   *) return 1 ;;
   esac
@@ -28,6 +30,7 @@ python=${PYTHON:-python}
 
 case $seed in *[!A-Za-z0-9]*) fail "a seed is letters and digits only, not '$seed'" ;; esac
 case $agent_seed in *[!0-9]*) fail "--agent-seed is a whole number, not '$agent_seed'" ;; esac
+case $character in *[!A-Z_]*) fail "--character is a character ID such as IRONCLAD, not '$character'" ;; esac
 case $time_scale in '' | *[!0-9.]* | *.*.*) fail "--time-scale is a positive number, not '$time_scale'" ;; esac
 
 running() { tasklist //FI "IMAGENAME eq $1" 2>/dev/null | grep -qi "$1"; }
@@ -59,7 +62,7 @@ done
 
 # Steam passes everything after the app ID to the game. Godot's own --log-file sends the whole game log to $log.
 "$steam/steam.exe" -applaunch "$APPID" --slay-the-human-run ${seed:+"--slay-the-human-seed=$seed"} \
-  --slay-the-human-agent-port="$port" --headless --time-scale "$time_scale" --log-file "$(cygpath -w "$PWD/$log")"
+  --slay-the-human-agent-port="$port" --slay-the-human-character="$character" --headless --time-scale "$time_scale" --log-file "$(cygpath -w "$PWD/$log")"
 
 waited=0
 until running SlayTheSpire2.exe; do
@@ -87,8 +90,10 @@ while running SlayTheSpire2.exe; do
   sleep 1
 done
 
+# The mod's own error, when it has one, comes before AutoSlay's, which may only be a consequence.
 end=$(grep -m1 '\[SlayTheHuman\] run end ' "$log" 2>/dev/null) ||
-  fail "the game exited before the run ended$(grep -m1 -o '\[AutoSlay\] Run failed.*' "$log" | sed 's/^/: /'). Log: $log"
+  fail "the game exited before the run ended$({ grep -m1 -o '\[SlayTheHuman\] run error: .*' "$log" ||
+    grep -m1 -o '\[AutoSlay\] Run failed.*' "$log"; } | sed 's/^/: /'). Log: $log"
 if [ -z "$agent_status" ]; then
   waited=0
   while agent_running; do
@@ -102,4 +107,4 @@ agent_summary=$(grep -m1 '^agent_seed=' "$agent_log") || fail "the agent printed
 run_seed=$(sed -n 's/.*\[SlayTheHuman\] run start seed=\([A-Za-z0-9]*\).*/\1/p' "$log" | head -n 1)
 outcome=$(echo "$end" | sed -n 's/.*outcome=\([a-z]*\).*/\1/p')
 floor=$(echo "$end" | sed -n 's/.*floor=\([0-9]*\).*/\1/p')
-echo "seed=$run_seed outcome=$outcome floor=$floor seconds=$(($(date +%s) - start)) $agent_summary log=$log"
+echo "seed=$run_seed character=$character outcome=$outcome floor=$floor seconds=$(($(date +%s) - start)) $agent_summary log=$log"

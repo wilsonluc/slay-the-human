@@ -1,10 +1,10 @@
-"""Plays every combat decision at random: a stand-in agent that exercises the bridge (spec 004).
+"""Makes every decision at random: a stand-in agent that exercises the bridge (specs 004 and 005).
 
     python agent/random_agent.py [--seed N] [--trace FILE]
 
 Prints port=<n> once listening, for tools/run.sh, and at the end
 agent_seed=<n> decisions=<n> per_second=<x>, where per_second is over the whole run.
-With --trace, writes each decision and the index chosen as one JSON line.
+With --trace, writes each decision and the answer given as one JSON line.
 """
 
 import argparse
@@ -15,6 +15,16 @@ import sys
 import time
 
 from bridge import Bridge, BridgeError
+
+
+def pick(decision: dict, rng: random.Random) -> int | list[int]:
+    """A uniform choice: one action, or for card_select a uniform count of distinct cards within min and max."""
+    if decision["kind"] == "card_select":
+        select = decision["state"]["card_select"]
+        cards = len(select["cards"])
+        count = rng.randint(select["min"], min(select["max"], cards))
+        return sorted(rng.sample(range(cards), count))
+    return rng.randrange(len(decision["actions"]))
 
 
 def main() -> int:
@@ -28,13 +38,13 @@ def main() -> int:
 
     with open(args.trace, "w", encoding="utf-8") if args.trace else contextlib.nullcontext() as trace:
 
-        def choose(decision: dict) -> int:
+        def choose(decision: dict) -> int | list[int]:
             nonlocal decisions
             decisions += 1
-            index = rng.randrange(len(decision["actions"]))
+            answer = pick(decision, rng)
             if trace:
-                trace.write(json.dumps({"decision": decision, "index": index}) + "\n")
-            return index
+                trace.write(json.dumps({"decision": decision, "answer": answer}) + "\n")
+            return answer
 
         try:
             bridge = Bridge()

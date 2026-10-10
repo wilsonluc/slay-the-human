@@ -3,7 +3,7 @@
 import json
 import socket
 
-PROTOCOL = 1
+PROTOCOL = 2
 
 
 class BridgeError(Exception):
@@ -39,9 +39,10 @@ class Bridge:
             raise BridgeError(f"protocol mismatch: the game speaks {hello.get('protocol')}, the agent {PROTOCOL}")
 
     def run(self, choose) -> dict:
-        """Answers each decision with choose(decision), an index into its actions, until the run ends.
+        """Answers each decision with choose(decision) until the run ends, and returns the run_end message.
 
-        Returns the run_end message. The game, not the agent, checks the index is legal.
+        choose returns an index into the decision's actions, or for a card_select decision a list of indices into
+        its cards. The game, not the agent, checks the answer is legal.
         """
         while True:
             message = self._receive()
@@ -51,7 +52,9 @@ class Bridge:
                 return message
             if kind != "decision":
                 raise BridgeError(f"expected decision or run_end, got {kind!r}")
-            self._send({"type": "action", "id": message["id"], "index": choose(message)})
+            answer = choose(message)
+            key = "indices" if isinstance(answer, list) else "index"
+            self._send({"type": "action", "id": message["id"], key: answer})
 
     def _send(self, message: dict) -> None:
         try:

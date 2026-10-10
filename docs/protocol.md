@@ -1,15 +1,15 @@
 # Agent protocol
 
-How the mod and the Python agent talk during an unattended run. This file is the protocol's single definition: the mod (`mod/Bridge.cs`, `mod/CombatSnapshot.cs`) and the agent (`agent/bridge.py`) follow it, and `tools/test.sh` checks both use the version below.
+How the mod and the Python agent talk during an unattended run. This file is the protocol's single definition: the mod (`mod/Bridge.cs` and the `mod/Agent*.cs` decisions) and the agent (`agent/bridge.py`) follow it, and `tools/test.sh` checks both use the version below.
 
-Protocol version: **1**
+Protocol version: **2**
 
 Change the version whenever a message changes shape, in the same PR as both sides.
 
 ## Connection
 
 - The agent listens on TCP `127.0.0.1` and prints the port. `tools/run.sh` passes it to the game as `--slay-the-human-agent-port=<port>`.
-- The mod connects once, at the run's first combat, and keeps the connection until the run ends.
+- The mod connects once, at the run's first decision, and keeps the connection until the run ends.
 - Each message is one JSON object on one line, UTF-8, ending in `\n`.
 - Only the mod asks and only the agent answers, one answer per question, in order.
 
@@ -20,28 +20,67 @@ Change the version whenever a message changes shape, in the same PR as both side
 Sent by each side right after connecting. If the versions differ, the side that notices closes the connection and fails with both versions in its error.
 
 ```json
-{"type": "hello", "protocol": 1}
+{"type": "hello", "protocol": 2}
 ```
 
 ### decision (mod to agent)
 
-Sent whenever the player can act in combat. `id` counts up from 1 within a run.
+Sent whenever the run needs a choice the agent makes. A choice with only one legal action is made without asking. `id` counts up from 1 within a run.
 
 ```json
-{"type": "decision", "id": 7, "state": {...}, "actions": [...]}
+{"type": "decision", "id": 7, "kind": "combat", "state": {"run": {...}, "combat": {...}}, "actions": [...]}
 ```
 
-`state`:
+`kind` is one of `combat`, `map`, `reward`, `card_reward`, `rest`, `card_select`. `state` always has `run`, plus one object named after the kind.
+
+### action (agent to mod)
+
+The answer to a decision, with the same `id`. For every kind but `card_select`, `index` picks one entry of `actions`. For `card_select`, `indices` picks cards from `state.card_select.cards`: distinct, at least `min` and at most `max` of them.
+
+```json
+{"type": "action", "id": 7, "index": 2}
+{"type": "action", "id": 8, "indices": [0, 3]}
+```
+
+The mod ends the run as an error, and never chooses on its own, when:
+- the answer is not a valid choice for that decision, or its `id` does not match;
+- the agent does not answer within 30 seconds;
+- the connection closes;
+- the game refuses the choice.
+
+### run_end (mod to agent)
+
+Sent once when the run ends, after which the mod closes the connection.
+
+```json
+{"type": "run_end", "outcome": "win", "floor": 48}
+```
+
+`outcome` is `win` or `loss`. A connection that closes without `run_end` means the run failed; the mod's log says why.
+
+## State
+
+### run (every decision)
 
 | Field | Type | Meaning |
 |---|---|---|
+| `character` | string | character ID, such as `IRONCLAD` |
+| `hp`, `max_hp`, `gold` | int | |
+| `ascension` | int | 0 to 10 |
 | `act` | int | act number, from 1 |
 | `floor` | int | rooms entered so far in the run |
+| `deck` | array | every card in the deck: `{"id", "upgraded"}` |
+| `relics` | array | `{"id", "counter"}`; `counter` is the number shown on the relic, or `null` |
+| `potions` | array | one entry per potion slot: `{"id", "target"}`, or `null` when empty |
+
+### combat
+
+| Field | Type | Meaning |
+|---|---|---|
 | `turn` | int | the player's turn number in this combat, from 1 |
 | `player` | object | `hp`, `max_hp`, `block`, `energy`, `max_energy`, `stars` (ints) and `powers` |
 | `hand` | array | the cards in hand, in hand order (see below) |
 | `draw`, `discard`, `exhaust` | int | pile sizes |
-| `potions` | array | one entry per potion slot: `{"id", "target"}`, or `null` when empty |
 | `enemies` | array | every enemy in the combat, dead ones included, so indices stay stable (see below) |
 
 A power is `{"id": <string>, "amount": <int>}`.
@@ -69,34 +108,61 @@ An enemy:
 | `powers` | array | powers |
 | `intents` | array | `{"type", "damage", "hits"}`; `type` is the game's intent type (`Attack`, `Defend`, `Buff`, ...). `damage` is per hit as the player would see it, and `hits` the number of hits, both only for attack intents (otherwise `null`). A hidden intent is `{"type": "Hidden", "damage": null, "hits": null}`. |
 
-`actions`, every legal action at this moment and nothing else:
+Actions:
 
 | Action | Meaning |
 |---|---|
 | `{"kind": "play", "card": <hand index>, "target": <enemy index or null>}` | play a card; `target` is set only for cards that target one enemy |
 | `{"kind": "potion", "slot": <slot index>, "target": <enemy index or null>}` | use a potion; `target` is set only for potions thrown at one enemy |
-| `{"kind": "end_turn"}` | end the turn; always present |
+| `{"kind": "end_turn"}` | end the turn |
 
-### action (agent to mod)
+### map
 
-The answer to a decision, with the same `id`. `index` picks one entry of that decision's `actions`.
+The current act's map, as the player sees it.
 
-```json
-{"type": "action", "id": 7, "index": 2}
-```
+| Field | Type | Meaning |
+|---|---|---|
+| `points` | array | every map point: `{"col", "row", "type"}`; `type` is the game's point type (`Monster`, `Elite`, `RestSite`, `Shop`, `Treasure`, `Unknown`, `Boss`, `Ancient`) |
+| `edges` | array | paths as `[from, to]` pairs of indices into `points` |
+| `current` | int or null | index of the point the player is on, or `null` before the first move |
 
-The mod ends the run as an error, and never acts on its own, when:
-- `index` is not a valid index into `actions`, or `id` does not match;
-- the agent does not answer within 30 seconds;
-- the connection closes;
-- the game refuses the action.
+Actions: `{"kind": "travel", "point": <index into points>}` for each point the game lets the player move to next, including moves a relic allows.
 
-### run_end (mod to agent)
+### reward
 
-Sent once when the run ends, after which the mod closes the connection.
+The rewards still on the rewards screen.
 
-```json
-{"type": "run_end", "outcome": "win", "floor": 48}
-```
+| Field | Type | Meaning |
+|---|---|---|
+| `rewards` | array | `{"type", "id", "amount", "group"}`: `type` is `gold`, `potion`, `relic`, `card`, `special_card`, `card_removal` or `other`; `id` is the potion, relic or card ID when there is one; `amount` is the gold; `group` numbers the members of a "choose one" set, else `null` |
 
-`outcome` is `win` or `loss`. A connection that closes without `run_end` means the run failed; the mod's log says why.
+Actions: `{"kind": "take", "reward": <index into rewards>}` for each reward that can be taken now (a potion only with a free slot), and `{"kind": "proceed"}` to leave the rest.
+
+### card_reward
+
+| Field | Type | Meaning |
+|---|---|---|
+| `cards` | array | the offered cards: `{"id", "upgraded", "type", "rarity"}` |
+| `alternatives` | array | the screen's other options by ID, such as `Skip`, `REROLL`, `SACRIFICE` |
+
+Actions: `{"kind": "pick", "card": <index into cards>}` and `{"kind": "alternative", "option": <ID>}`.
+
+### rest
+
+| Field | Type | Meaning |
+|---|---|---|
+| `options` | array | the rest site's options: `{"id", "enabled"}`; IDs such as `HEAL`, `SMITH`, `LIFT`, `DIG` |
+
+Actions: `{"kind": "rest", "option": <index into options>}` for each enabled option, and `{"kind": "proceed"}` once the game allows leaving.
+
+### card_select
+
+The game asks the player to select cards.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `purpose` | string | why: `upgrade`, `transform`, `enchant`, `remove`, `discard`, `hand_upgrade`, `hand`, `deck`, `choose`, `grid`, `reward_grid`, `combat_pile`, or `other` when the game asks some other way |
+| `min`, `max` | int | how few and how many cards may be selected |
+| `cards` | array | the cards offered: `{"id", "upgraded", "type", "rarity"}` |
+
+`actions` is empty; the answer is `indices` into `cards`.

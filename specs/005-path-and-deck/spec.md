@@ -1,6 +1,6 @@
 # 005: The path and the deck
 
-Status: approved
+Status: done
 
 ## Problem
 
@@ -21,18 +21,18 @@ The agent makes every map, reward, card reward, rest site and card selection cho
 
 ## Acceptance criteria
 
-- [ ] Every decision the agent gets carries the run's state: HP, max HP, gold, the deck (each card's ID and whether it is upgraded), relics, potions, act and floor.
-- [ ] Map: at each choice of the next room, the agent gets the act's map as the player sees it (every node with its room type, the paths between them, the current position) and chooses among the rooms the game lets the player move to next, including moves a relic allows.
-- [ ] Rewards: after a combat, the agent chooses which rewards to take, one at a time, and when to move on. A reward that cannot be taken (a potion with no free slot) is not listed.
-- [ ] Card rewards: the agent chooses one of the offered cards or one of the other options on that screen, such as skipping.
-- [ ] Rest sites: the agent chooses among the options the rest site offers.
-- [ ] Card selection: every time the game asks the player to select cards (to upgrade, transform, remove, enchant, discard, choose, and the like), the agent gets the cards offered, why they are offered, and how few and how many it may pick, and picks any allowed number of them.
-- [ ] Combats that events start are played by the agent like any other combat; no power the player could not get is applied and no enemy is killed except by play.
-- [ ] The command takes the character to play; without it, the run uses Ironclad.
-- [ ] Over a full run of the random agent, AutoSlay makes none of the choices listed above.
-- [ ] The same game seed, agent seed and character give the same run.
-- [ ] The protocol document covers the new decisions, and its version goes up.
-- [ ] `README.md` covers the new option.
+- [x] Every decision the agent gets carries the run's state: HP, max HP, gold, the deck (each card's ID and whether it is upgraded), relics, potions, act and floor.
+- [x] Map: at each choice of the next room, the agent gets the act's map as the player sees it (every node with its room type, the paths between them, the current position) and chooses among the rooms the game lets the player move to next, including moves a relic allows.
+- [x] Rewards: after a combat, the agent chooses which rewards to take, one at a time, and when to move on. A reward that cannot be taken (a potion with no free slot) is not listed.
+- [x] Card rewards: the agent chooses one of the offered cards or one of the other options on that screen, such as skipping.
+- [x] Rest sites: the agent chooses among the options the rest site offers.
+- [x] Card selection: every time the game asks the player to select cards (to upgrade, transform, remove, enchant, discard, choose, and the like), the agent gets the cards offered, why they are offered, and how few and how many it may pick, and picks any allowed number of them.
+- [x] Combats that events start are played by the agent like any other combat; no power the player could not get is applied and no enemy is killed except by play.
+- [x] The command takes the character to play; without it, the run uses Ironclad.
+- [x] Over a full run of the random agent, AutoSlay makes none of the choices listed above.
+- [x] The same game seed, agent seed and character give the same run.
+- [x] The protocol document covers the new decisions, and its version goes up.
+- [x] `README.md` covers the new option.
 
 ## Open questions
 

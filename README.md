@@ -62,6 +62,7 @@ Run the agent's tests with `python -m unittest discover agent`, and the tools' w
 - `docs/protocol.md` — the messages between the mod and the agent.
 - `tools/` — `decompile.sh` decompiles the installed game into `decompiled/`; `mod.sh` builds and installs the mod; `run.sh` plays an unattended run; `game.sh` finds the game for all three; `test.sh` checks how they refuse bad setups.
 - `decompiled/` (gitignored, local only) — the game's C# source for the targeted build, made by `tools/decompile.sh`.
+- `docs/architecture.md` — how the pieces fit, and the Python layout the specs grow into.
 - `ROADMAP.md` — the phases: what the agent should reach, in order, and the rules for moving between them.
 - `specs/` — feature specs. Every feature starts as a spec; see `specs/README.md` for the process.
 - `.scrape/` (gitignored, local only) — reference material taken from [sts2-rl-agent](https://github.com/zhiyue/sts2-rl-agent): the C# bridge mod, a Python simulator, and docs. See `.scrape/NOTES.md`.

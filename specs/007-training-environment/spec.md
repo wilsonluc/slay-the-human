@@ -10,7 +10,7 @@ It also needs many episodes, fast. Today each run launches the game through Stea
 
 ## Goal
 
-A Python environment a learner can drive one step at a time: each decision of a run comes as a fixed-shape observation with a mask of the legal actions in one fixed action space, each step returns a reward, and one game process plays runs back to back.
+A Python environment a learner can drive one step at a time, laid out as `docs/architecture.md` describes: each decision of a run comes as a fixed-shape observation with a mask of the legal actions in one fixed action space, each step returns a reward, and one game process plays runs back to back.
 
 ## Non-goals
 
@@ -21,13 +21,13 @@ A Python environment a learner can drive one step at a time: each decision of a 
 
 ## Acceptance criteria
 
-- [ ] `reset()` starts a new run, with a given seed or a new random one, and returns the first decision's observation and action mask. `step(action)` carries out the action and returns the next observation, the mask, the reward, whether the run is over, and the run's seed, floor and outcome.
+- [ ] The environment has the Gymnasium shape (`docs/architecture.md`): `reset(seed)` starts a new run, with the given seed or a new random one, and returns the first decision's observation and an info dict; `step(action)` returns the next observation, the reward, `terminated`, `truncated` and an info dict with the run's seed, floor and outcome; `action_masks()` returns the legal actions.
 - [ ] Every decision kind is encoded into the same fixed-shape observation, and every legal action of every kind has its own index in one fixed action space. The mask marks exactly the legal actions. A card selection that takes several cards is made through the same action space.
-- [ ] Every card, relic, potion, monster, power and event the targeted game build has gets its own index, taken from that build. An ID outside that vocabulary fails loudly.
+- [ ] Every card, relic, potion, monster, power and event the targeted game build has gets its own index, taken from that build, and the vocabulary has a content hash. An ID outside that vocabulary fails loudly.
 - [ ] An action the mask does not allow is refused with an error naming it; nothing picks an action in its place.
 - [ ] The reward is defined in one place and documented, and every step's reward is kept in the run's trace.
 - [ ] One game process plays at least 10 runs in a row, each started by `reset()`, without relaunching.
-- [ ] A run that fails (the game stops, hangs or disconnects) ends its episode as an error that names the reason and is logged; the next `reset()` starts the game again if it has to.
+- [ ] Only a win or a loss is `terminated`. A run that fails (the game stops, hangs or disconnects) ends its episode as `truncated`, with the reason logged as an error; the next `reset()` starts the game again if it has to.
 - [ ] The same seed and the same actions give the same observations, masks and rewards.
 - [ ] The environment reports steps per second and runs per hour over a session of random actions.
 - [ ] The environment's tests run in CI against a fake game.

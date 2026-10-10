@@ -9,24 +9,40 @@ import threading
 import unittest
 from pathlib import Path
 
+import random_agent
 from bridge import PROTOCOL, Bridge, BridgeError
 
-# A decision shaped as in docs/protocol.md.
+# Decisions shaped as in docs/protocol.md.
+RUN = {
+    "character": "IRONCLAD", "hp": 80, "max_hp": 80, "gold": 99, "ascension": 0, "act": 1, "floor": 1,
+    "deck": [{"id": "STRIKE_IRONCLAD", "upgraded": False}], "relics": [{"id": "BURNING_BLOOD", "counter": None}],
+    "potions": [None],
+}
 DECISION = {
     "type": "decision",
     "id": 1,
+    "kind": "combat",
     "state": {
-        "act": 1, "floor": 1, "turn": 1,
-        "player": {"hp": 80, "max_hp": 80, "block": 0, "energy": 3, "max_energy": 3, "stars": 0, "powers": []},
-        "hand": [{"id": "STRIKE_IRONCLAD", "upgraded": False, "cost": 1, "costs_x": False, "star_cost": -1,
-                  "type": "Attack", "target": "AnyEnemy", "playable": True}],
-        "draw": 5, "discard": 0, "exhaust": 0,
-        "potions": [None],
-        "enemies": [{"id": "NIBBIT", "alive": True, "hp": 20, "max_hp": 20, "block": 0, "powers": [],
-                     "intents": [{"type": "Attack", "damage": 6, "hits": 1}]}],
+        "run": RUN,
+        "combat": {
+            "turn": 1,
+            "player": {"hp": 80, "max_hp": 80, "block": 0, "energy": 3, "max_energy": 3, "stars": 0, "powers": []},
+            "hand": [{"id": "STRIKE_IRONCLAD", "upgraded": False, "cost": 1, "costs_x": False, "star_cost": -1,
+                      "type": "Attack", "target": "AnyEnemy", "playable": True}],
+            "draw": 5, "discard": 0, "exhaust": 0,
+            "enemies": [{"id": "NIBBIT", "alive": True, "hp": 20, "max_hp": 20, "block": 0, "powers": [],
+                         "intents": [{"type": "Attack", "damage": 6, "hits": 1}]}],
+        },
     },
     "actions": [{"kind": "play", "card": 0, "target": 0}, {"kind": "end_turn"}],
 }
+CARD = {"id": "BASH", "upgraded": False, "type": "Attack", "rarity": "Basic"}
+
+
+def card_select(decision_id: int, cards: int, low: int, high: int) -> dict:
+    return {"type": "decision", "id": decision_id, "kind": "card_select", "actions": [],
+            "state": {"run": RUN, "card_select": {"purpose": "upgrade", "min": low, "max": high,
+                                                  "cards": [CARD] * cards}}}
 
 
 class FakeMod:
@@ -95,6 +111,15 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(end, {"type": "run_end", "outcome": "loss", "floor": 3})
         mod.close()
 
+    def test_card_select_answered_with_indices(self):
+        bridge = Bridge(accept_timeout=5)
+        mod = connect(bridge)
+        mod.send(card_select(1, cards=3, low=0, high=2))
+        mod.send({"type": "run_end", "outcome": "loss", "floor": 3})
+        bridge.run(lambda decision: [0, 2])
+        self.assertEqual(mod.receive(), {"type": "action", "id": 1, "indices": [0, 2]})
+        mod.close()
+
     def test_disconnect_before_run_end_fails(self):
         bridge = Bridge(accept_timeout=5)
         mod = connect(bridge)
@@ -118,6 +143,23 @@ class BridgeTest(unittest.TestCase):
         with self.assertRaisesRegex(BridgeError, "expected decision or run_end, got 'surprise'"):
             bridge.run(lambda decision: 0)
         mod.close()
+
+
+class RandomPickTest(unittest.TestCase):
+    def test_card_select_picks_distinct_cards_within_min_and_max(self):
+        for low, high, cards in [(0, 1, 3), (1, 1, 5), (2, 3, 4), (0, 5, 2), (3, 3, 3)]:
+            counts = set()
+            for seed in range(200):
+                chosen = random_agent.pick(card_select(1, cards, low, high), random.Random(seed))
+                self.assertEqual(len(chosen), len(set(chosen)))
+                self.assertTrue(all(0 <= i < cards for i in chosen))
+                self.assertTrue(low <= len(chosen) <= min(high, cards), (low, high, cards, chosen))
+                counts.add(len(chosen))
+            self.assertEqual(counts, set(range(low, min(high, cards) + 1)), "every allowed count is reachable")
+
+    def test_other_kinds_pick_one_action(self):
+        for seed in range(50):
+            self.assertIn(random_agent.pick(DECISION, random.Random(seed)), range(len(DECISION["actions"])))
 
 
 class RandomAgentTest(unittest.TestCase):

@@ -1,4 +1,8 @@
+using System.Linq;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Logging;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.AutoSlay;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
 
@@ -23,6 +27,15 @@ internal static class StartAutoSlay
             return;
         }
         _started = true;
+        var characters = ModelDb.AllCharacters.Select(character => character.Id.Entry).ToList();
+        if (!characters.Contains(RunMode.Character))
+        {
+            // Fail before AutoSlay starts, so the reason is not buried under its timeout.
+            Log.Error($"[{ModEntry.Id}] run error: no character {RunMode.Character}; the game has " +
+                string.Join(", ", characters));
+            NGame.Instance?.Quit();
+            return;
+        }
         RunLog.Attach();
         new AutoSlayer().Start(RunMode.Seed);
     }

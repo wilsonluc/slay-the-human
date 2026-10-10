@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -18,7 +19,7 @@ namespace SlayTheHuman;
 internal static class Bridge
 {
     /// <summary>The protocol version in docs/protocol.md. tools/test.sh checks the agent uses the same.</summary>
-    public const int Protocol = 1;
+    public const int Protocol = 2;
 
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(30);
@@ -32,8 +33,8 @@ internal static class Bridge
 
     public static bool IsOn => PortArgument is not null;
 
-    /// <summary>Connects to the agent and checks its protocol version, the first time it is called in a run.</summary>
-    public static async Task EnsureConnectedAsync(CancellationToken ct)
+    /// <summary>Connects to the agent and checks its protocol version, at the run's first decision.</summary>
+    private static async Task EnsureConnectedAsync(CancellationToken ct)
     {
         if (_client is not null)
         {
@@ -76,10 +77,52 @@ internal static class Bridge
     }
 
     /// <summary>Sends a decision and returns the agent's answer, an index checked to be within the actions.</summary>
-    public static async Task<int> AskAsync(JsonObject state, JsonArray actions, CancellationToken ct)
+    public static async Task<int> AskIndexAsync(string kind, JsonObject state, JsonArray actions, CancellationToken ct)
     {
+        var answer = await AskAsync(kind, state, actions, ct);
+        if (answer["index"] is not JsonValue indexValue || !indexValue.TryGetValue<int>(out var index) || index < 0 ||
+            index >= actions.Count)
+        {
+            throw new BridgeException(
+                $"the agent chose action {answer["index"]?.ToJsonString()}, not one of the {actions.Count} listed");
+        }
+        return index;
+    }
+
+    /// <summary>
+    /// Sends a card_select decision and returns the agent's answer: distinct indices into the cards, checked to number
+    /// between min and max.
+    /// </summary>
+    public static async Task<int[]> AskIndicesAsync(JsonObject state, int cards, int min, int max, CancellationToken ct)
+    {
+        var answer = await AskAsync("card_select", state, new JsonArray(), ct);
+        int[] indices;
+        try
+        {
+            indices = (answer["indices"] as JsonArray)?.Select(node => node!.GetValue<int>()).ToArray()
+                ?? throw new BridgeException("the agent answered a card_select without indices");
+        }
+        catch (Exception e) when (e is InvalidOperationException or FormatException or NullReferenceException)
+        {
+            throw new BridgeException($"the agent's indices are not whole numbers: {answer["indices"]?.ToJsonString()}");
+        }
+        if (indices.Any(i => i < 0 || i >= cards) || indices.Distinct().Count() != indices.Length ||
+            indices.Length < min || indices.Length > max)
+        {
+            throw new BridgeException(
+                $"the agent selected cards {answer["indices"]?.ToJsonString()}, not {min} to {max} distinct of the {cards} offered");
+        }
+        return indices;
+    }
+
+    private static async Task<JsonObject> AskAsync(string kind, JsonObject state, JsonArray actions, CancellationToken ct)
+    {
+        await EnsureConnectedAsync(ct);
         var id = ++_lastId;
-        await SendAsync(new JsonObject { ["type"] = "decision", ["id"] = id, ["state"] = state, ["actions"] = actions });
+        await SendAsync(new JsonObject
+        {
+            ["type"] = "decision", ["id"] = id, ["kind"] = kind, ["state"] = state, ["actions"] = actions,
+        });
         var answer = await ReceiveAsync(AnswerTimeout, ct);
         if ((string?)answer["type"] != "action")
         {
@@ -89,13 +132,7 @@ internal static class Bridge
         {
             throw new BridgeException($"the agent answered decision {answer["id"]?.ToJsonString()}, not {id}");
         }
-        if (answer["index"] is not JsonValue indexValue || !indexValue.TryGetValue<int>(out var index) || index < 0 ||
-            index >= actions.Count)
-        {
-            throw new BridgeException(
-                $"the agent chose action {answer["index"]?.ToJsonString()}, not one of the {actions.Count} listed");
-        }
-        return index;
+        return answer;
     }
 
     /// <summary>Tells the agent how the run ended and closes the connection. Does nothing when not connected.</summary>

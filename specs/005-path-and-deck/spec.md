@@ -14,7 +14,7 @@ The agent makes every map, reward, card reward, rest site and card selection cho
 
 ## Non-goals
 
-- Events, shops, treasure rooms, and the relic, bundle and Crystal Sphere choice screens. AutoSlay still decides those; they are spec 006.
+- Events, shops, treasure rooms, and the relic, bundle and Crystal Sphere choice screens. AutoSlay still decides those; they are spec 006. That includes each run's opening ancient event, where AutoSlay still picks the starting blessing at random, and the relic choice after a boss.
 - Discarding a potion, or using one outside combat.
 - Ascension levels.
 - A smart agent. The random client from spec 004 picks among the options.
@@ -22,7 +22,7 @@ The agent makes every map, reward, card reward, rest site and card selection cho
 ## Acceptance criteria
 
 - [ ] Every decision the agent gets carries the run's state: HP, max HP, gold, the deck (each card's ID and whether it is upgraded), relics, potions, act and floor.
-- [ ] Map: at each choice of the next room, the agent gets the act's map as the player sees it (every node with its room type, the paths between them, the current position) and chooses among the rooms it can move to.
+- [ ] Map: at each choice of the next room, the agent gets the act's map as the player sees it (every node with its room type, the paths between them, the current position) and chooses among the rooms the game lets the player move to next, including moves a relic allows.
 - [ ] Rewards: after a combat, the agent chooses which rewards to take, one at a time, and when to move on. A reward that cannot be taken (a potion with no free slot) is not listed.
 - [ ] Card rewards: the agent chooses one of the offered cards or one of the other options on that screen, such as skipping.
 - [ ] Rest sites: the agent chooses among the options the rest site offers.

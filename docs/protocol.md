@@ -49,7 +49,7 @@ Sent whenever the run needs a choice the agent makes. A choice with only one leg
 {"type": "decision", "id": 7, "kind": "combat", "state": {"run": {...}, "combat": {...}}, "actions": [...]}
 ```
 
-`kind` is one of `combat`, `map`, `reward`, `card_reward`, `rest`, `card_select`, `event`, `shop`, `treasure`, `bundle`, `crystal_sphere`. `state` always has `run`, plus one object named after the kind.
+`kind` is one of `combat`, `map`, `reward`, `card_reward`, `rest`, `card_select`, `event`, `shop`, `treasure`, `bundle`, `crystal_sphere`. `state` always has `run` and `map`, plus one object named after the kind, plus `combat` whenever a combat is in progress (a card selection in the middle of a fight, for example). `state` holds everything a player can look up, so the agent needs no memory of earlier decisions.
 
 ### action (agent to mod)
 
@@ -77,6 +77,31 @@ Sent once when the run ends, with the seed as the game canonicalised it. The con
 
 ## State
 
+### Cards
+
+Every card, wherever it appears (deck, hand, piles, card rewards, special card rewards, selections, bundles, shop), is the same object:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | string | card ID, such as `STRIKE_IRONCLAD` |
+| `type` | string | `Attack`, `Skill`, `Power`, `Status`, `Curse` or `Quest` |
+| `rarity` | string | the game's rarity, such as `Basic`, `Common`, `Rare` |
+| `upgrade` | int | upgrade level, 0 when not upgraded; some cards upgrade more than once |
+| `vars` | object | each of the card's numbers by name, as it is now (`{"Damage": 9, "Block": 0, ...}`), so a card that grew is seen grown |
+| `keywords` | array | the card's keywords from every source, sorted, such as `Exhaust`, `Ethereal`, `Retain` |
+| `enchantment`, `affliction` | object or null | `{"id", "amount"}` |
+
+In hand, a card also has:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `cost` | int | energy cost with all modifiers; negative when the card has no energy cost |
+| `costs_x` | bool | an X-cost card, which spends all energy |
+| `star_cost` | int | star cost with modifiers; negative when none |
+| `target` | string | the game's target type, such as `AnyEnemy`, `Self`, `AllEnemies`, `None` |
+| `playable` | bool | the game would let the card be played now |
+| `preview` | object | each number after modifiers, as the card in hand shows it with no target |
+
 ### run (every decision)
 
 | Field | Type | Meaning |
@@ -86,40 +111,31 @@ Sent once when the run ends, with the seed as the game canonicalised it. The con
 | `ascension` | int | 0 to 10 |
 | `act` | int | act number, from 1 |
 | `floor` | int | rooms entered so far in the run |
-| `deck` | array | every card in the deck: `{"id", "upgraded"}` |
+| `boss`, `second_boss` | string or null | the act's boss encounter ID, and the second one when there is one |
+| `combats_won`, `elites_killed`, `bosses_killed` | int | so far this run |
+| `deck` | array | every card in the deck, as cards |
 | `relics` | array | `{"id", "counter"}`; `counter` is the number shown on the relic, or `null` |
 | `potions` | array | one entry per potion slot: `{"id", "target"}`, or `null` when empty |
 
-### combat
+### combat (whenever a combat is in progress)
 
 | Field | Type | Meaning |
 |---|---|---|
+| `encounter` | string | the encounter ID |
 | `turn` | int | the player's turn number in this combat, from 1 |
 | `player` | object | `hp`, `max_hp`, `block`, `energy`, `max_energy`, `stars` (ints) and `powers` |
-| `hand` | array | the cards in hand, in hand order (see below) |
-| `draw`, `discard`, `exhaust` | int | pile sizes |
+| `hand` | array | the cards in hand, in hand order, as hand cards |
+| `draw`, `discard`, `exhaust` | array | each pile's cards, sorted, so the draw pile's order (hidden from a player) never shows |
 | `enemies` | array | every enemy in the combat, dead ones included, so indices stay stable (see below) |
 
 A power is `{"id": <string>, "amount": <int>}`.
-
-A hand card:
-
-| Field | Type | Meaning |
-|---|---|---|
-| `id` | string | card ID, such as `STRIKE_IRONCLAD` |
-| `upgraded` | bool | |
-| `cost` | int | energy cost with all modifiers; negative when the card has no energy cost |
-| `costs_x` | bool | an X-cost card, which spends all energy |
-| `star_cost` | int | star cost with modifiers; negative when none |
-| `type` | string | `Attack`, `Skill`, `Power`, `Status`, `Curse` or `Quest` |
-| `target` | string | the game's target type, such as `AnyEnemy`, `Self`, `AllEnemies`, `None` |
-| `playable` | bool | the game would let the card be played now |
 
 An enemy:
 
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | string | monster ID |
+| `combat_id` | int | the game's ID for this creature in this combat, which follows it when enemies are added or removed |
 | `alive` | bool | |
 | `hp`, `max_hp`, `block` | int | |
 | `powers` | array | powers |
@@ -133,9 +149,9 @@ Actions:
 | `{"kind": "potion", "slot": <slot index>, "target": <enemy index or null>}` | use a potion; `target` is set only for potions thrown at one enemy |
 | `{"kind": "end_turn"}` | end the turn |
 
-### map
+### map (every decision)
 
-The current act's map, as the player sees it.
+The current act's map, as the player sees it. A `map` decision has no object of its own: its state is this one.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -151,7 +167,7 @@ The rewards still on the rewards screen.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `rewards` | array | `{"type", "id", "amount", "group"}`: `type` is `gold`, `potion`, `relic`, `card`, `special_card`, `card_removal` or `other`; `id` is the potion, relic or card ID when there is one; `amount` is the gold; `group` numbers the members of a "choose one" set, else `null` |
+| `rewards` | array | `{"type", "id", "amount", "group", "card"}`: `type` is `gold`, `potion`, `relic`, `card`, `special_card`, `card_removal` or `other`; `id` is the potion, relic or card ID when there is one; `amount` is the gold; `group` numbers the members of a "choose one" set, else `null`; `card` is a special card reward's card, else `null` |
 
 Actions: `{"kind": "take", "reward": <index into rewards>}` for each reward that can be taken now (a potion only with a free slot), and `{"kind": "proceed"}` to leave the rest.
 
@@ -159,7 +175,7 @@ Actions: `{"kind": "take", "reward": <index into rewards>}` for each reward that
 
 | Field | Type | Meaning |
 |---|---|---|
-| `cards` | array | the offered cards: `{"id", "upgraded", "type", "rarity"}` |
+| `cards` | array | the offered cards |
 | `alternatives` | array | the screen's other options by ID, such as `Skip`, `REROLL`, `SACRIFICE` |
 
 Actions: `{"kind": "pick", "card": <index into cards>}` and `{"kind": "alternative", "option": <ID>}`.
@@ -180,7 +196,7 @@ The game asks the player to select cards.
 |---|---|---|
 | `purpose` | string | why: `upgrade`, `transform`, `enchant`, `remove`, `discard`, `exhaust`, `hand_upgrade`, `hand`, `deck`, `choose`, `grid`, `reward_grid`, `combat_pile`, or `other` when the game asks some other way |
 | `min`, `max` | int | how few and how many cards may be selected |
-| `cards` | array | the cards offered: `{"id", "upgraded", "type", "rarity"}` |
+| `cards` | array | the cards offered |
 
 `actions` is empty; the answer is `indices` into `cards`.
 
@@ -200,7 +216,7 @@ The shop's inventory, or the FakeMerchant event's.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `items` | array | `{"type", "id", "cost", "on_sale", "stocked"}`: `type` is `card`, `relic`, `potion` or `card_removal`; `id` is the card, relic or potion ID; `stocked` is false once bought |
+| `items` | array | `{"type", "id", "cost", "on_sale", "stocked", "card"}`: `type` is `card`, `relic`, `potion` or `card_removal`; `id` is the card, relic or potion ID; `stocked` is false once bought; `card` is a card item's card, else `null` |
 
 Actions: `{"kind": "buy", "item": <index into items>}` for each stocked item the player can afford (a potion only with a free slot), and `{"kind": "leave"}`. Card removal then asks a `card_select` with purpose `remove`.
 
@@ -216,7 +232,7 @@ Actions: `{"kind": "take"}` when there is a relic, and `{"kind": "skip"}`.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `bundles` | array | each bundle's cards, as arrays of `{"id", "upgraded", "type", "rarity"}` |
+| `bundles` | array | each bundle's cards, as arrays of cards |
 
 Actions: `{"kind": "pick", "bundle": <index into bundles>}`.
 

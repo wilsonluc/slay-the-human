@@ -31,12 +31,13 @@ internal static class AgentBundle
         return false;
     }
 
-    private static async Task ChooseAsync(NChooseABundleSelectionScreen screen, CancellationToken ct)
+    /// <summary>The bundle decision, for the screen AutoSlay hands over and for one a reward opens.</summary>
+    public static async Task ChooseAsync(NChooseABundleSelectionScreen screen, CancellationToken ct)
     {
         var bundles = UiHelper.FindAll<NCardBundle>(screen);
         var decision = new Decision("bundle");
         decision.State["bundles"] = new JsonArray(bundles.Select(bundle =>
-            (JsonNode)new JsonArray(bundle.Bundle.Select(card => (JsonNode)Decision.Card(card)).ToArray())).ToArray());
+            (JsonNode)new JsonArray(bundle.Bundle.Select(card => (JsonNode)GameState.Card(card)).ToArray())).ToArray());
         for (var i = 0; i < bundles.Count; i++)
         {
             var bundle = bundles[i];

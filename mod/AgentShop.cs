@@ -137,6 +137,7 @@ internal static class AgentShop
         return new JsonObject
         {
             ["type"] = type, ["id"] = id, ["cost"] = entry.Cost, ["on_sale"] = onSale, ["stocked"] = entry.IsStocked,
+            ["card"] = entry is MerchantCardEntry { CreationResult.Card: { } model } ? GameState.Card(model) : null,
         };
     }
 }

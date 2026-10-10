@@ -63,6 +63,10 @@ internal static class AgentEvent
                 await Wait.Until(() => CombatStarting || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 ||
                     (NMapScreen.Instance?.IsOpen ?? false) || RunOver.IsOver, ChangeTimeout,
                     "what follows the event room closing", ct);
+                if (RunOver.IsOver)
+                {
+                    await RunOver.EndIfLostAsync(ct);
+                }
                 var run = RunManager.Instance.DebugOnlyGetState();
                 if (!CombatStarting || run is null || run.CurrentRoomCount <= 1 || run.BaseRoom?.RoomType != RoomType.Event)
                 {
@@ -75,7 +79,7 @@ internal static class AgentEvent
                 {
                     return;
                 }
-                await Wait.Until(() => !Alive(resumed) || Options(resumed).Count > 0 || (NMapScreen.Instance?.IsOpen ?? false) ||
+                await Wait.Until(() => !Alive(resumed) || Options(resumed).Count > 0 || EventFinished ||
                     (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || RunOver.IsOver, ChangeTimeout,
                     "the event to resume after its combat", ct);
                 if (!Alive(resumed) || Options(resumed).Count == 0)
@@ -90,7 +94,7 @@ internal static class AgentEvent
             {
                 // A click clears the options at once; wait for what follows before deciding the event is over.
                 await Wait.Until(() => !Alive(eventRoom) || Options(eventRoom).Count > 0 || CombatStarting ||
-                    (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || (NMapScreen.Instance?.IsOpen ?? false) || RunOver.IsOver,
+                    (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || EventFinished || RunOver.IsOver,
                     ChangeTimeout, "the event to show what follows", ct);
                 if (!Alive(eventRoom) || Options(eventRoom).Count > 0)
                 {
@@ -105,10 +109,10 @@ internal static class AgentEvent
             }
             var before = new HashSet<NEventOptionButton>(buttons);
             var chosen = await ChooseAsync(eventRoom, buttons, ct);
-            // Whatever the option does shows on screen: a new page, a screen, a combat, the map, the room closing, or,
+            // Whatever the option does shows: a new page, a screen, a combat, the event finishing, the room closing, or,
             // for an option that gives up the run, the game's confirmation.
             await Wait.Until(() => GivingUp || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 ||
-                (NMapScreen.Instance?.IsOpen ?? false) || !Alive(eventRoom) || CombatManager.Instance.IsInProgress ||
+                EventFinished || !Alive(eventRoom) || CombatManager.Instance.IsInProgress ||
                 !before.SetEquals(Options(eventRoom)) || RunOver.IsOver,
                 ChangeTimeout, $"the event to respond to {chosen.Option.TextKey}", ct);
             await ConfirmGivingUpAsync(ct);
@@ -133,7 +137,7 @@ internal static class AgentEvent
                 {
                     return;
                 }
-                await Wait.Until(() => !Alive(eventRoom) || (NMapScreen.Instance?.IsOpen ?? false) ||
+                await Wait.Until(() => !Alive(eventRoom) || EventFinished ||
                     (NOverlayStack.Instance?.ScreenCount ?? 0) > 0 || Options(eventRoom).Count > 0 || RunOver.IsOver,
                     ChangeTimeout, "the event to resume after its combat", ct);
                 if (!Alive(eventRoom) || Options(eventRoom).Count == 0)
@@ -195,12 +199,22 @@ internal static class AgentEvent
         await Wait.Until(() => RunOver.IsOver, ChangeTimeout, "the run to end after giving up", ct);
     }
 
+    /// <summary>
+    /// The event is over, as the game's event state says. While its room is up, the map can already count as open behind
+    /// it, so that is no sign the event ended.
+    /// </summary>
+    private static bool EventFinished => RunManager.Instance.EventSynchronizer.GetLocalEvent()?.IsFinished ?? true;
+
     /// <summary>The game is asking to confirm giving up the run.</summary>
     private static bool GivingUp => NModalContainer.Instance?.OpenModal is NAbandonRunConfirmPopup;
 
-    /// <summary>The event has started a combat: its room is a combat room now, or the combat is under way.</summary>
-    private static bool CombatStarting => CombatManager.Instance.IsInProgress ||
-        RunManager.Instance.DebugOnlyGetState()?.CurrentRoom is CombatRoom;
+    /// <summary>
+    /// The event has started a combat that is not over: the combat is under way, or the room is a combat room not yet
+    /// finished. The game stays in a won combat's room for a moment after it ends, and in a lost one's until the run is
+    /// wound down; neither is a combat starting.
+    /// </summary>
+    private static bool CombatStarting => !RunOver.IsOver && (CombatManager.Instance.IsInProgress ||
+        RunManager.Instance.DebugOnlyGetState()?.CurrentRoom is CombatRoom { IsPreFinished: false });
 
     /// <summary>The options that can be chosen now: enabled and not locked.</summary>
     private static List<NEventOptionButton> Options(Node eventRoom) => UiHelper.FindAll<NEventOptionButton>(eventRoom)

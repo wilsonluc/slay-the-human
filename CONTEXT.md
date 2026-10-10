@@ -30,6 +30,7 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 - **Truncated**: an episode cut short by a failure (the game stopped, hung or disconnected) or by the per-run step limit. The learner bootstraps from the value estimate instead of treating it as a loss.
 - **Trace**: the full record of every decision, action, outcome reward and reward term score in a run (`.trace.jsonl`), kept for evaluation runs, failed runs and a sample of training runs.
 - **Summary row**: what every other training run keeps instead of a trace: seed, outcome, floor, steps, reward term results, failure reason, and the action indices that replay it.
+- **Game copy**: a copy of the game folder for one build, made by `tools/copy-game.sh` and never updated by Steam, which training and evaluation launch.
 - **Run mode**: the mod's mode for unattended runs: the agent makes every decision, unlocks are fixed to everything unlocked, and nothing is saved.
 - **Vocabulary**: every ID and named value of the targeted game build, each with its own index for the observation, identified by a content hash.
 - **Training run**: one training session, from start to stop, with its record in `runs/<training run>/`. Not a run of the game.

@@ -52,8 +52,9 @@ internal static class RunLoop
             var root = ((SceneTree)Engine.GetMainLoop()).Root;
             while (true)
             {
-                await Wait.Until(() => !AutoSlayer.IsActive &&
-                    (root.GetNodeOrNull<Control>("/root/Game/RootSceneContainer/MainMenu")?.IsVisibleInTree() ?? false),
+                // A run takes as long as it takes; only the way back to the main menu after it should be quick.
+                await Wait.Until(() => !AutoSlayer.IsActive, TimeSpan.MaxValue, "the run to end", CancellationToken.None);
+                await Wait.Until(() => root.GetNodeOrNull<Control>("/root/Game/RootSceneContainer/MainMenu")?.IsVisibleInTree() ?? false,
                     MainMenuTimeout, "the main menu", CancellationToken.None);
                 if (await Bridge.ReadyAsync(CancellationToken.None) is not var (seed, character))
                 {
@@ -69,6 +70,7 @@ internal static class RunLoop
                 RunMode.StartRun(seed, character);
                 RunLog.Reset();
                 RunProfile.Reset();
+                RunCounters.Reset();
                 SelectionPurpose.Reset();
                 Log.Info($"[{ModEntry.Id}] run start seed={RunMode.Seed} character={RunMode.Character}");
                 new AutoSlayer().Start(RunMode.Seed);

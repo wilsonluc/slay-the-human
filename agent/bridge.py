@@ -19,6 +19,7 @@ class Bridge:
         self.port: int = self._server.getsockname()[1]
         self._conn = None
         self._file = None
+        self._ready = False
         self.hello: dict = {}
 
     def accept(self) -> dict:
@@ -40,11 +41,18 @@ class Bridge:
         self.hello = hello
         return hello
 
+    def wait_ready(self, timeout: float | None = None) -> None:
+        """Waits for the game to be ready at the main menu."""
+        if not self._ready:
+            ready = self.receive(timeout)
+            if ready.get("type") != "ready":
+                raise BridgeError(f"expected ready, got {ready.get('type')!r}")
+            self._ready = True
+
     def start(self, seed: str | None, character: str, timeout: float | None = None) -> None:
         """Waits for the game to be ready at the main menu, then starts a run."""
-        ready = self.receive(timeout)
-        if ready.get("type") != "ready":
-            raise BridgeError(f"expected ready, got {ready.get('type')!r}")
+        self.wait_ready(timeout)
+        self._ready = False
         self._send({"type": "start", "seed": seed, "character": character})
 
     def answer(self, decision: dict, answer: int | list[int]) -> None:

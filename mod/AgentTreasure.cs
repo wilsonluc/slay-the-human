@@ -31,6 +31,9 @@ internal static class AgentTreasure
         return false;
     }
 
+    private static readonly AccessTools.FieldRef<NTreasureRoom, bool> ChestOpened =
+        AccessTools.FieldRefAccess<NTreasureRoom, bool>("_hasChestBeenOpened");
+
     private static async Task OpenAsync(CancellationToken ct)
     {
         var root = ((SceneTree)Engine.GetMainLoop()).Root;
@@ -40,8 +43,10 @@ internal static class AgentTreasure
         await UiHelper.Click(room!.GetNode<NClickableControl>("Chest"));
         NTreasureRoomRelicHolder? Holder() =>
             UiHelper.FindAll<NTreasureRoomRelicHolder>(room).FirstOrDefault(holder => holder.IsEnabled && holder.Visible);
-        // The relic appears once the chest opens; an empty chest only enables the button.
-        await Wait.Until(() => Holder() is not null || room.ProceedButton.IsEnabled, RoomTimeout, "the chest to open", ct);
+        // The room's button is enabled before the chest opens, so wait for the game to finish opening it: then the relic
+        // is offered, or an empty chest only enables the button.
+        await Wait.Until(() => ChestOpened(room) && (Holder() is not null || room.ProceedButton.IsEnabled), RoomTimeout,
+            "the chest to open", ct);
 
         var holder = Holder();
         var decision = new Decision("treasure");

@@ -1,132 +1,151 @@
-"""Makes every decision at random: a stand-in agent that exercises the bridge and the game.
+"""Picks every action at random among the legal ones: the baseline agent, and the speed command for the environment.
 
-    python -m agent.random_agent [--runs N] [--seed N] [--game-seeds S1,S2,...] [--character ID] [--time-scale X]
-                                 [--think-seconds S --think-count K] [--no-launch]
+    python -m agent.random_agent [--games N] [--runs R] [--seed S] [--character ID] [--trace-every K]
+                                 [--think-seconds T --think-count C] [--time-scale X] [--game-command CMD]
+    python -m agent.random_agent --replay runs/<time>/summary.jsonl --row I
 
-Launches one game from the game copy (agent/env/games.py) and plays N runs back to back in it. Prints seed=<n> first,
-then one line per run: seed= character= outcome= floor= decisions= per_second= trace=, and at the end the totals.
-Game seeds come from the agent seed, so the same --seed replays the same runs; --game-seeds fixes the first runs'.
-Each run's choices depend only on the agent seed and that run's game seed, so a run replays the same wherever it falls.
---think-seconds S --think-count K sleeps S seconds before each of the first K answers, to check the game waits.
---no-launch prints port=<n> and waits for a game launched some other way to connect. Game logs and traces go in
-runs/<time>/.
+Launches N games from the game copy (one environment each, start-ups staggered) and plays R runs in all across them,
+one thread per game. Prints seed=<n> first, a line per run, then steps per second (per game and in total), runs per
+hour, the mean and largest floor, and the largest size seen of each observation set. Each run's choices depend only on
+the agent seed and that run's game seed, so a run replays the same wherever it falls. --think-seconds T --think-count C
+sleeps T seconds before each of the first C actions, to check the game waits. --replay plays a summary row's seed and
+action indices again and checks the outcome, floor and steps match. Records go in runs/<time>/.
 """
 
 import argparse
 import json
+import logging
 import random
-import subprocess
+import shlex
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
-from agent.bridge import Bridge, BridgeError
-from agent.env import games
+import numpy as np
 
-# The game's own seed alphabet: no I or O, which it reads as 1 and 0.
-SEED_CHARACTERS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
-MESSAGE_TIMEOUT = 120.0
+from agent.env.environment import Environment, make_environments
 
 
-def game_seed(rng: random.Random) -> str:
-    return "".join(rng.choice(SEED_CHARACTERS) for _ in range(10))
+def pick(mask: np.ndarray, rng: random.Random) -> int:
+    """A uniform choice among the legal actions."""
+    return int(rng.choice(np.flatnonzero(mask).tolist()))
 
 
-def pick(decision: dict, rng: random.Random) -> int | list[int]:
-    """A uniform choice: one action, or for card_select a uniform count of distinct cards within min and max."""
-    if decision["kind"] == "card_select":
-        select = decision["state"]["card_select"]
-        cards = len(select["cards"])
-        count = rng.randint(select["min"], min(select["max"], cards))
-        return sorted(rng.sample(range(cards), count))
-    return rng.randrange(len(decision["actions"]))
+class Think:
+    """Sleeps before each of the first few actions, across every game."""
+
+    def __init__(self, seconds: float, count: int) -> None:
+        self._lock, self._seconds, self._left = threading.Lock(), seconds, count
+
+    def __call__(self) -> None:
+        with self._lock:
+            if self._left <= 0:
+                return
+            self._left -= 1
+        time.sleep(self._seconds)
 
 
-def play_runs(bridge: Bridge, runs: int, agent_seed: int, character: str, out: Path, game_seeds: list[str] = (),
-              think: tuple[float, int] = (0.0, 0)):
-    """Plays runs back to back on a connected game, then closes the connection. Yields one summary dict per run."""
-    seeds = random.Random(agent_seed)
-    think_seconds, think_left = think
-    for number in range(1, runs + 1):
-        seed = game_seeds[number - 1] if number <= len(game_seeds) else game_seed(seeds)
-        rng = random.Random(f"{agent_seed}/{seed}")
-        trace_path = out / f"run-{number}.trace.jsonl"
-        decisions = 0
-        with trace_path.open("w", encoding="utf-8") as trace:
+def play(env: Environment, agent_seed: int, think: Think) -> dict:
+    """One run with random actions; returns its summary."""
+    obs, info = env.reset()
+    rng = random.Random(f"{agent_seed}/{info['seed']}")
+    steps, started = 0, time.monotonic()
+    while True:
+        think()
+        obs, reward, terminated, truncated, info = env.step(pick(env.action_masks(), rng))
+        steps += 1
+        if terminated or truncated:
+            elapsed = time.monotonic() - started
+            return {"game": env.name, "seed": info["seed"], "outcome": info["outcome"], "floor": info["floor"],
+                    "steps": steps, "per_second": steps / elapsed if elapsed else 0.0}
 
-            def choose(decision: dict) -> int | list[int]:
-                nonlocal decisions, think_left
-                if think_left > 0:
-                    think_left -= 1
-                    time.sleep(think_seconds)
-                decisions += 1
-                answer = pick(decision, rng)
-                trace.write(json.dumps({"decision": decision, "answer": answer}) + "\n")
-                return answer
 
-            bridge.start(seed, character, MESSAGE_TIMEOUT)
-            started = time.monotonic()
-            end = bridge.play(choose, MESSAGE_TIMEOUT)
-        elapsed = time.monotonic() - started
-        yield {"seed": end.get("seed", seed), "character": character, "outcome": end["outcome"], "floor": end["floor"],
-               "decisions": decisions, "per_second": decisions / elapsed if elapsed else 0.0, "trace": trace_path}
-    # Close only once the game is back at the main menu, so it quits cleanly instead of failing a write.
-    ready = bridge.receive(MESSAGE_TIMEOUT)
-    if ready.get("type") != "ready":
-        raise BridgeError(f"expected ready, got {ready.get('type')!r}")
-    bridge.close()
+def replay(path: str, row: int, args) -> int:
+    record = json.loads(Path(path).read_text(encoding="utf-8").splitlines()[row])
+    env = Environment(Path(path).parent / "replay", character=args.character, time_scale=args.time_scale,
+                      game_command=shlex.split(args.game_command) if args.game_command else None)
+    try:
+        env.reset(seed=record["seed"])
+        for steps, action in enumerate(record["actions"], start=1):
+            obs, reward, terminated, truncated, info = env.step(action)
+            if terminated or truncated:
+                break
+    finally:
+        env.close()
+    got = (info["outcome"], info["floor"], steps)
+    want = (record["outcome"], record["floor"], record["steps"])
+    print(f"replay seed={record['seed']} outcome={got[0]} floor={got[1]} steps={got[2]} matches={got == want}")
+    return 0 if got == want else 1
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--runs", type=int, default=1, help="runs to play in one game process (default 1)")
-    parser.add_argument("--seed", type=int, help="seed for the choices and game seeds (default: a new random one)")
-    parser.add_argument("--game-seeds", default="", help="the first runs' game seeds, comma-separated (default: drawn from --seed)")
+    parser.add_argument("--games", type=int, default=1, help="games to run at once (default 1)")
+    parser.add_argument("--runs", type=int, default=1, help="runs to play in all (default 1)")
+    parser.add_argument("--seed", type=int, help="agent seed (default: a new random one)")
     parser.add_argument("--character", default="IRONCLAD", help="character ID (default IRONCLAD)")
+    parser.add_argument("--trace-every", type=int, default=100, help="keep a full trace of one in this many runs")
+    parser.add_argument("--think-seconds", type=float, default=0.0, help="seconds to sleep before each of the first actions")
+    parser.add_argument("--think-count", type=int, default=0, help="how many actions to sleep before (default 0)")
     parser.add_argument("--time-scale", type=float, default=20, help="game speed (default 20)")
-    parser.add_argument("--think-seconds", type=float, default=0.0, help="seconds to sleep before each of the first answers")
-    parser.add_argument("--think-count", type=int, default=0, help="how many answers to sleep before (default 0)")
-    parser.add_argument("--no-launch", action="store_true", help="wait for a game launched some other way")
+    parser.add_argument("--game-command", help="a command to run instead of the game (the tests' fake game)")
+    parser.add_argument("--replay", help="a summary.jsonl to replay a row of")
+    parser.add_argument("--row", type=int, default=0, help="the row of --replay, from 0")
     args = parser.parse_args()
-    seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
-    out = Path("runs") / datetime.now().strftime("%Y%m%d-%H%M%S")
-    out.mkdir(parents=True, exist_ok=True)
-    # The seed first, so runs that fail can still be replayed.
-    print(f"seed={seed}", flush=True)
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
+    if args.replay:
+        return replay(args.replay, args.row, args)
 
-    bridge = Bridge()
-    game = None
-    log = out / "game.log"
-    total_decisions, began = 0, time.monotonic()
-    try:
-        if args.no_launch:
-            print(f"port={bridge.port}", flush=True)
-        else:
-            game = games.launch(bridge.port, log.resolve(), args.time_scale)
-        bridge.accept()
-        game_seeds = [s for s in args.game_seeds.split(",") if s]
-        for run in play_runs(bridge, args.runs, seed, args.character, out, game_seeds, (args.think_seconds, args.think_count)):
-            total_decisions += run["decisions"]
-            print(" ".join(f"{key}={value:.1f}" if isinstance(value, float) else f"{key}={value}"
-                           for key, value in run.items()), flush=True)
-        if game and (code := game.wait(timeout=60)) != 0:
-            raise BridgeError(f"the game exited with code {code}")
-    except (BridgeError, TimeoutError, games.GameCopyError, subprocess.TimeoutExpired) as e:
-        print(f"agent: {e or type(e).__name__}", file=sys.stderr)
-        if log.exists():
-            errors = [line for line in log.read_text(encoding="utf-8", errors="replace").splitlines()
-                      if "run error" in line or "RunFailed" in line]
-            for line in errors[-3:]:
-                print(f"game: {line}", file=sys.stderr)
-        return 1
-    finally:
-        if game and game.poll() is None:
-            game.kill()
-    elapsed = time.monotonic() - began
-    print(f"agent_seed={seed} runs={args.runs} decisions={total_decisions} per_second={total_decisions / elapsed:.1f} "
-          f"log={log}", flush=True)
-    return 0
+    seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
+    print(f"seed={seed}", flush=True)
+    out = Path("runs") / datetime.now().strftime("%Y%m%d-%H%M%S")
+    began = time.monotonic()
+    envs = make_environments(args.games, out, seed=seed, character=args.character, trace_every=args.trace_every,
+                             time_scale=args.time_scale,
+                             game_command=shlex.split(args.game_command) if args.game_command else None)
+    launched = time.monotonic()
+    lock, left, results, errors = threading.Lock(), [args.runs], [], []
+    think = Think(args.think_seconds, args.think_count)
+
+    def worker(env: Environment) -> None:
+        try:
+            while True:
+                with lock:
+                    if left[0] == 0:
+                        return
+                    left[0] -= 1
+                result = play(env, seed, think)
+                with lock:
+                    results.append(result)
+                    print(" ".join(f"{k}={v:.1f}" if isinstance(v, float) else f"{k}={v}" for k, v in result.items()),
+                          flush=True)
+        except Exception as e:  # reported below; the other games finish their runs
+            errors.append(f"{env.name}: {type(e).__name__}: {e}")
+
+    threads = [threading.Thread(target=worker, args=(env,)) for env in envs]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    for env in envs:
+        env.close()
+    elapsed = time.monotonic() - launched
+    steps = sum(r["steps"] for r in results)
+    floors = [r["floor"] for r in results]
+    largest: dict[str, int] = {}
+    for env in envs:
+        for name, size in env.encoder.largest.items():
+            largest[name] = max(largest.get(name, 0), size)
+    print(f"agent_seed={seed} games={args.games} runs={len(results)} steps={steps} "
+          f"steps_per_second={steps / elapsed:.1f} per_game={steps / elapsed / args.games:.1f} "
+          f"runs_per_hour={len(results) / elapsed * 3600:.0f} mean_floor={np.mean(floors) if floors else 0:.1f} "
+          f"max_floor={max(floors, default=0)} launch_seconds={launched - began:.0f} out={out}", flush=True)
+    print("largest " + " ".join(f"{name}={size}" for name, size in sorted(largest.items())), flush=True)
+    for error in errors:
+        print(f"agent: {error}", file=sys.stderr)
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

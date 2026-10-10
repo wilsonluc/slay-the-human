@@ -65,6 +65,7 @@ internal static class Bridge
         {
             ["type"] = "hello", ["protocol"] = Protocol, ["game_version"] = release?.Version,
             ["game_commit"] = release?.Commit,
+            ["vocabulary"] = new JsonArray(Vocabulary.Keys().Select(key => (JsonNode)key).ToArray()),
         });
         var hello = await ReceiveAsync(ConnectTimeout, ct);
         if ((string?)hello["type"] != "hello")

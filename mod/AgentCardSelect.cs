@@ -42,7 +42,7 @@ internal static class AgentCardSelect
         var state = new JsonObject
         {
             ["purpose"] = purpose, ["min"] = min, ["max"] = most,
-            ["cards"] = new JsonArray(cards.Select(card => (JsonNode)Decision.Card(card)).ToArray()),
+            ["cards"] = new JsonArray(cards.Select(card => (JsonNode)GameState.Card(card)).ToArray()),
         };
         var indices = await Bridge.AskIndicesAsync(Decision.WithRun("card_select", state), cards.Count, min, most,
             CancellationToken.None);

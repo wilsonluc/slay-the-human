@@ -11,6 +11,8 @@ import threading
 import unittest
 from pathlib import Path
 
+import numpy as np
+
 from agent import random_agent
 from agent.bridge import PROTOCOL, Bridge, BridgeError
 
@@ -173,62 +175,36 @@ class BridgeTest(unittest.TestCase):
 
 
 class RandomPickTest(unittest.TestCase):
-    def test_card_select_picks_distinct_cards_within_min_and_max(self):
-        for low, high, cards in [(0, 1, 3), (1, 1, 5), (2, 3, 4), (0, 5, 2), (3, 3, 3)]:
-            counts = set()
-            for seed in range(200):
-                chosen = random_agent.pick(card_select(1, cards, low, high), random.Random(seed))
-                self.assertEqual(len(chosen), len(set(chosen)))
-                self.assertTrue(all(0 <= i < cards for i in chosen))
-                self.assertTrue(low <= len(chosen) <= min(high, cards), (low, high, cards, chosen))
-                counts.add(len(chosen))
-            self.assertEqual(counts, set(range(low, min(high, cards) + 1)), "every allowed count is reachable")
-
-    def test_other_kinds_pick_one_action(self):
-        for seed in range(50):
-            self.assertIn(random_agent.pick(DECISION, random.Random(seed)), range(len(DECISION["actions"])))
+    def test_picks_only_legal_actions_and_every_one(self):
+        mask = np.zeros(10, bool)
+        mask[[2, 5, 7]] = True
+        picks = {random_agent.pick(mask, random.Random(seed)) for seed in range(100)}
+        self.assertEqual(picks, {2, 5, 7})
 
 
 class RandomAgentTest(unittest.TestCase):
-    """Runs the random agent as a separate process, with --no-launch, against a fake mod."""
+    """Runs the random agent as a separate process against fake games."""
 
-    def play(self, seed: int, runs: int, decisions: int) -> tuple[list[str], list[int]]:
+    def play(self, seed: int, games: int, runs: int) -> list[dict]:
+        fake = Path(__file__).with_name("fake_game.py")
         with tempfile.TemporaryDirectory() as cwd:
-            agent = subprocess.Popen(
-                [sys.executable, "-m", "agent.random_agent", "--seed", str(seed), "--runs", str(runs), "--no-launch"],
+            agent = subprocess.run(
+                [sys.executable, "-m", "agent.random_agent", "--seed", str(seed), "--games", str(games), "--runs",
+                 str(runs), "--game-command", f'"{sys.executable}" "{fake}" --decisions 6'],
                 cwd=cwd, env={**os.environ, "PYTHONPATH": str(Path(__file__).parents[2])},
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            self.assertEqual(agent.stdout.readline().strip(), f"seed={seed}", "the seed is printed first")
-            port = int(agent.stdout.readline().removeprefix("port="))
-            mod = FakeMod(port)
-            seeds, indices = [], []
-            for _ in range(runs):
-                mod.send({"type": "ready"})
-                start = mod.receive()
-                self.assertEqual((start["type"], start["character"]), ("start", "IRONCLAD"))
-                seeds.append(start["seed"])
-                for i in range(1, decisions + 1):
-                    mod.send({**DECISION, "id": i, "actions": [{"kind": "end_turn"}] * 5})
-                    answer = mod.receive()
-                    self.assertEqual(answer["id"], i)
-                    indices.append(answer["index"])
-                mod.send({**RUN_END, "seed": start["seed"]})
-            mod.send({"type": "ready"})
-            self.assertIsNone(mod.receive(), "the agent closes the connection at the last ready")
-            out, err = agent.communicate(timeout=10)
-            mod.close()
-        self.assertEqual(agent.returncode, 0, err)
-        self.assertEqual(out.count("outcome=loss"), runs)
-        self.assertRegex(out, rf"agent_seed={seed} runs={runs} decisions={runs * decisions} per_second=[0-9.]+")
-        return seeds, indices
+                capture_output=True, text=True, timeout=120)
+            self.assertEqual(agent.returncode, 0, agent.stderr)
+            self.assertEqual(agent.stdout.splitlines()[0], f"seed={seed}", "the seed is printed first")
+            self.assertRegex(agent.stdout, rf"games={games} runs={runs} steps=\d+ steps_per_second=[0-9.]+ per_game=")
+            self.assertIn("runs_per_hour=", agent.stdout)
+            self.assertIn("largest ", agent.stdout)
+            summary = next(Path(cwd).glob("runs/*/summary.jsonl"))
+            return sorted((json.loads(line) for line in summary.read_text().splitlines()), key=lambda r: r["seed"])
 
     def test_same_seed_same_runs(self):
-        self.assertEqual(self.play(seed=1, runs=2, decisions=10), self.play(seed=1, runs=2, decisions=10))
-
-    def test_game_seeds_differ_between_runs_and_use_the_game_alphabet(self):
-        seeds, _ = self.play(seed=7, runs=3, decisions=1)
-        self.assertEqual(len(set(seeds)), 3)
-        self.assertTrue(all(len(s) == 10 and set(s) <= set(random_agent.SEED_CHARACTERS) for s in seeds))
+        first, second = self.play(seed=1, games=2, runs=4), self.play(seed=1, games=2, runs=4)
+        self.assertEqual([(r["seed"], r["actions"]) for r in first], [(r["seed"], r["actions"]) for r in second])
+        self.assertEqual(len(first), 4)
 
 
 if __name__ == "__main__":

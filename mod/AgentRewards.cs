@@ -102,6 +102,17 @@ internal static class AgentRewards
                 await Wait.Until(() => !GodotObject.IsInstanceValid(cardScreen) || !cardScreen.IsVisibleInTree(),
                     ChildTimeout, "the card reward screen to close", ct);
             }
+            else if (NOverlayStack.Instance?.Peek() is NChooseABundleSelectionScreen bundles)
+            {
+                // A reward that offers bundles of cards (such as a pack) asks the bundle decision.
+                await AgentBundle.ChooseAsync(bundles, ct);
+            }
+            else if (NOverlayStack.Instance?.Peek() is NRewardsScreen nested && nested != screen)
+            {
+                // A reward that grants more rewards opens a rewards screen of its own.
+                await ChooseAsync(nested, ct);
+                await Wait.Until(() => !Alive(nested), ChildTimeout, "the inner rewards screen to close", ct);
+            }
             else if (!settled && Alive(screen) && NOverlayStack.Instance?.Peek() is { } other && other != screen)
             {
                 throw new InvalidOperationException($"a reward opened a screen the agent cannot answer: {other.GetType().Name}");
@@ -145,6 +156,7 @@ internal static class AgentRewards
         return new JsonObject
         {
             ["type"] = type, ["id"] = id, ["amount"] = amount, ["group"] = group >= 0 ? group : null,
+            ["card"] = reward is SpecialCardReward card && SpecialCard(card) is { } model ? GameState.Card(model) : null,
         };
     }
 }

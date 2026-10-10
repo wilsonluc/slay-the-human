@@ -46,6 +46,7 @@ Reward:
 Runs and failures:
 
 - [ ] Several game processes run at once, each its own environment. The number is a setting, not tied to one machine. The environment launches each game directly (not through Steam), staggering start-ups so none times out while the others load.
+- [ ] The environment launches the game from a copy of the game folder kept outside Steam's library, one copy per game build, so a Steam update never changes the game under a training run. `GAME_VERSION.md` records the build and a hash of the copy, and the environment refuses a copy whose hash does not match.
 - [ ] Run mode fixes the run's unlocks to everything unlocked and writes no profile file, so a seed's content depends neither on the profile nor on earlier runs in the process, and training never touches the player's own save.
 - [ ] Each game process plays at least 10 runs in a row, each started by `reset()`, without relaunching.
 - [ ] Between decisions, the mod and the game flow wait on the game's state, not on fixed times; the only fixed time left is the hang detection below.

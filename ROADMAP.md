@@ -26,6 +26,7 @@ Phase 2's choice is made, and written here, when phase 1 ends: keep refining Iro
 - **Targets come from measurements.** The random agent never wins, so phase 0 is judged on mean floor against it, with the margin and step count set from the first measurements. Phase 1.0's target win rate is set from the first agent that wins reliably, and each later level's from the result of the level below. Until then the targets read "to be set".
 - **Stop and look before training longer.** If a training run's mean floor has not beaten the random agent's by the set margin by 10 million steps, training stops and the environment, reward and model are examined before any longer run.
 - **Evaluation is separate from training.** Win rates are measured on a fixed set of evaluation seeds that training never uses, with the agent choosing its best action rather than sampling.
+- **A phase runs on one game build.** Training and evaluation launch from a copy of the game that Steam does not update. Moving to a new build is a deliberate step: a new copy, the mod checked against it, and the vocabulary migrated.
 - **A finished phase is reproducible.** Its record names the checkpoint, git commit, training config, game build (`GAME_VERSION.md`), evaluation seed set, and the evaluation result. A result that cannot be traced to its record does not count (`STANDARDS.md`).
 
 ## Targets

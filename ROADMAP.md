@@ -13,6 +13,10 @@ Where the project is going, in phases. A phase is a result the agent reaches, ch
 
 The game has ascension levels 0 to 10, and they are cumulative: ascension *n* keeps every modifier of the levels below it (`AscensionManager.HasLevel` is `level >= n`). The playable characters are Ironclad, Silent, Defect, Necrobinder and Regent.
 
+**Phase 0 decision point.** After the training environment (spec 007), its measured steps per second and runs per hour go here. Learning a full run from scratch likely takes tens of millions of steps, so if one game is too slow for that, the next spec is either running several games at once (once two game processes are shown to run on one machine) or a combat-only environment, before PPO.
+
+**Ascension 10 ends later.** At ascension 10 the act 3 boss is followed by a second one on floor 49; ascension support must play to it, not stop at floor 48.
+
 Phase 2's choice is made, and written here, when phase 1 ends: keep refining Ironclad, or start another character (Silent first), from scratch or from Ironclad's weights.
 
 ## Rules

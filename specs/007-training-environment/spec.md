@@ -1,6 +1,6 @@
 # 007: Training environment
 
-Status: draft
+Status: approved
 
 ## Problem
 

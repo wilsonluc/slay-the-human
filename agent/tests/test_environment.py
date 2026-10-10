@@ -145,7 +145,7 @@ class EnvironmentTest(unittest.TestCase):
         env.reset(seed=row["seed"])
         for action in row["actions"]:
             result = env.step(action)
-        self.assertEqual(result[3]["outcome"], first[-1][3]["outcome"])
+        self.assertEqual(result[4]["outcome"], first[-1][3]["outcome"])
 
     def test_multi_card_picks_in_any_order_are_sent_sorted(self):
         decisions = [json.loads(line) for line in RECORDINGS.read_text().splitlines() if line.strip()]

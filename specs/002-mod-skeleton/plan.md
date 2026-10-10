@@ -7,7 +7,7 @@
 **The mod.** A plain `Microsoft.NET.Sdk` class library in `mod/`, targeting `net9.0` (the game ships .NET 9.0.7). No Godot SDK, since there is no `.pck`. It references `sts2.dll`, `GodotSharp.dll` and `0Harmony.dll` from the game's data folder, passed in as the MSBuild property `GameDataDir`, with `Private=false` so none is copied to the output. The build fails with a clear error when `GameDataDir` is missing.
 
 - Mod ID and assembly name: `SlayTheHuman`. The game loads `mods/SlayTheHuman/SlayTheHuman.json` and `SlayTheHuman.dll`.
-- The manifest sets `hasDll: true`, `hasPck: false`.
+- The manifest sets `has_dll: true` and `has_pck: false`. The game reads only snake_case keys, and without `has_dll` it skips the DLL with a warning, not an error.
 - Entry point: a class marked with the game's `[ModInitializer("Init")]`, so the game calls `Init` instead of its own `Harmony.PatchAll`. `Init` applies each `[HarmonyPatch]` class one at a time. If one throws, it removes every patch the mod applied, logs an error naming the failing class, and rethrows, so the game marks the mod as failed. Otherwise it logs how many patch classes it applied.
 - One patch: a postfix on `NMainMenu._Ready` that logs a line when the main menu is ready.
 - Every line the mod logs goes through the game's `Log` and starts with `[SlayTheHuman]`, so it lands in the game's `godot.log`.
@@ -21,7 +21,7 @@
 - `tools/game.sh`: shared lookup of Steam, the game and its build, and the build check.
 - `tools/decompile.sh`: sources `tools/game.sh`.
 - `tools/mod.sh`: builds and installs the mod.
-- `tools/decompile.test.sh` becomes `tools/test.sh`: the existing checks, plus `tools/mod.sh` installing nothing on a build mismatch.
+- `tools/decompile.test.sh` becomes `tools/test.sh`: the existing checks, plus `tools/mod.sh` installing nothing on a build mismatch, and the manifest declaring `has_dll: true` and `has_pck: false`.
 - `mod/SlayTheHuman.csproj`, `mod/SlayTheHuman.json`, `mod/ModEntry.cs`, `mod/MainMenuReady.cs`: the mod.
 - `README.md`: how to build and install the mod and accept the mods warning; `mod/` in the layout.
 - `GAME_VERSION.md`: Godot from `GodotSharp.dll` (assembly version 4.5.1.0), .NET from `sts2.runtimeconfig.json` (9.0.7), and the game's own version from `release_info.json` (v0.107.1).

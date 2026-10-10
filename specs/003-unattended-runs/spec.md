@@ -1,6 +1,6 @@
 # 003: Unattended runs
 
-Status: draft
+Status: approved
 
 ## Problem
 
@@ -10,7 +10,7 @@ The game ships a built-in test bot, AutoSlay, that plays a whole run unattended.
 
 ## Goal
 
-One command plays one full run unattended: it launches the game through Steam with no window and at a raised game speed, the game plays a run with a given seed to the end, and the command reports the outcome and how long it took.
+One command plays one full run unattended: it launches the game through Steam with no window and at a raised game speed, the game plays a run to the end, and the command reports the outcome, how long it took, and the run's seed. Training uses a new random seed for each run; the seed is recorded so any run can be replayed.
 
 ## Non-goals
 
@@ -24,8 +24,8 @@ One command plays one full run unattended: it launches the game through Steam wi
 - [ ] With Steam running, one command run from the repo root launches the game through Steam, the game plays one full run to its end, and the command exits 0 after the game exits.
 - [ ] The command prints the run's seed, its outcome (win or loss), the floor it ended on, and the elapsed time.
 - [ ] No game window opens during the run.
-- [ ] The run uses the seed given to the command: the game's own log names that seed as the run's seed.
-- [ ] Two runs with the same seed visit the same rooms in the same order and end with the same outcome on the same floor.
+- [ ] Without a seed, each run gets a new random seed. With a seed, the run uses it. Either way, the game's own log names the printed seed as the run's seed.
+- [ ] Two runs given the same seed visit the same rooms in the same order and end with the same outcome on the same floor.
 - [ ] The game speed can be set; a full run at the default speed takes at most half the time of a run at normal speed with no window.
 - [ ] When the run makes no progress for a set time, or the game exits without finishing a run, the command stops the game and exits non-zero, saying what happened.
 - [ ] When Steam is not running, the command exits non-zero and says so, before launching anything.

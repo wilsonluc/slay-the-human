@@ -75,6 +75,7 @@ internal static class RunLoop
                 RunProfile.Reset();
                 RunCounters.Reset();
                 SelectionPurpose.Reset();
+                RelicDrawn.Reset();
                 Log.Info($"[{ModEntry.Id}] run start seed={RunMode.Seed} character={RunMode.Character}");
                 Slayer = new AutoSlayer();
                 Slayer.Start(RunMode.Seed);

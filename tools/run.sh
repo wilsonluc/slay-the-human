@@ -49,7 +49,7 @@ log="$name.log" agent_log="$name.agent.log" trace="$name.trace.jsonl"
 start=$(date +%s)
 
 # The agent listens first and prints the port it chose; the game connects to it.
-"$python" -u agent/random_agent.py ${agent_seed:+--seed "$agent_seed"} --trace "$trace" >"$agent_log" 2>&1 &
+"$python" -u -m agent.random_agent ${agent_seed:+--seed "$agent_seed"} --trace "$trace" >"$agent_log" 2>&1 &
 agent_pid=$!
 trap 'kill "$agent_pid" 2>/dev/null || true' EXIT
 waited=0 port=''

@@ -1,6 +1,6 @@
 """Makes every decision at random: a stand-in agent that exercises the bridge (specs 004 to 006).
 
-    python agent/random_agent.py [--seed N] [--trace FILE]
+    python -m agent.random_agent [--seed N] [--trace FILE]
 
 Prints seed=<n> first, port=<n> once listening (for tools/run.sh), and at the end
 agent_seed=<n> decisions=<n> per_second=<x>, where per_second is over the whole run.
@@ -14,7 +14,7 @@ import random
 import sys
 import time
 
-from bridge import Bridge, BridgeError
+from agent.bridge import Bridge, BridgeError
 
 
 def pick(decision: dict, rng: random.Random) -> int | list[int]:

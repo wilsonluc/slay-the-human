@@ -1,4 +1,4 @@
-"""Tests for bridge.py and random_agent.py, with a fake mod on a real socket. Run: python -m unittest discover agent"""
+"""Tests for bridge.py and random_agent.py, with a fake mod on a real socket. Run: python -m unittest discover -s agent/tests -t ."""
 
 import json
 import random
@@ -9,8 +9,8 @@ import threading
 import unittest
 from pathlib import Path
 
-import random_agent
-from bridge import PROTOCOL, Bridge, BridgeError
+from agent import random_agent
+from agent.bridge import PROTOCOL, Bridge, BridgeError
 
 # Decisions shaped as in docs/protocol.md.
 RUN = {
@@ -167,7 +167,7 @@ class RandomAgentTest(unittest.TestCase):
 
     def play(self, seed: int, decisions: int) -> list[int]:
         agent = subprocess.Popen(
-            [sys.executable, str(Path(__file__).with_name("random_agent.py")), "--seed", str(seed)],
+            [sys.executable, "-m", "agent.random_agent", "--seed", str(seed)], cwd=Path(__file__).parents[2],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         self.assertEqual(agent.stdout.readline().strip(), f"seed={seed}", "the seed is printed first")
         port = int(agent.stdout.readline().removeprefix("port="))

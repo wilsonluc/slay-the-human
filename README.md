@@ -35,7 +35,7 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
 
 ## Unattended runs
 
-With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It starts the random Python agent (`agent/random_agent.py`, Python 3.13, standard library only), then launches the game through Steam with no window and at 20x game speed. The agent makes every decision in the run (combat, map, rewards, card rewards, rest sites, card selections, events, shops, treasure, bundles and the Crystal Sphere) over the bridge described in `docs/protocol.md`, and the mod carries out its choices the way a player would. The game's built-in AutoSlay bot only drives the screens around them: menus, dialogue and transitions. It prints one line:
+With Steam running and the game closed, `sh tools/run.sh` plays one full run with nobody at the keyboard. It starts the random Python agent (`agent/random_agent.py`, Python 3.13 with the packages in `pyproject.toml`; install them with `pip install -e .`), then launches the game through Steam with no window and at 20x game speed. The agent makes every decision in the run (combat, map, rewards, card rewards, rest sites, card selections, events, shops, treasure, bundles and the Crystal Sphere) over the bridge described in `docs/protocol.md`, and the mod carries out its choices the way a player would. The game's built-in AutoSlay bot only drives the screens around them: menus, dialogue and transitions. It prints one line:
 
 ```
 seed=TEST1 character=IRONCLAD outcome=loss floor=4 seconds=30 agent_seed=1 decisions=50 per_second=7.3 log=runs/20261010-165634.log
@@ -49,7 +49,7 @@ seed=TEST1 character=IRONCLAD outcome=loss floor=4 seconds=30 agent_seed=1 decis
 - Runs use the game's separate modded profile and save nothing, so your own saves, stats and achievements are untouched.
 - A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started by this command.
 
-Run the agent's tests with `python -m unittest discover agent`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
+Run the agent's tests with `python -m unittest discover -s agent/tests -t .`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
 
 ## Layout
 

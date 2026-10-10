@@ -68,6 +68,7 @@ internal static class RunLoop
                 }
                 RunMode.StartRun(seed, character);
                 RunLog.Reset();
+                RunProfile.Reset();
                 SelectionPurpose.Reset();
                 Log.Info($"[{ModEntry.Id}] run start seed={RunMode.Seed} character={RunMode.Character}");
                 new AutoSlayer().Start(RunMode.Seed);

@@ -1,11 +1,12 @@
 """Makes every decision at random: a stand-in agent that exercises the bridge and the game.
 
-    python -m agent.random_agent [--runs N] [--seed N] [--game-seed SEED] [--character ID] [--time-scale X]
+    python -m agent.random_agent [--runs N] [--seed N] [--game-seeds S1,S2,...] [--character ID] [--time-scale X]
                                  [--no-launch]
 
 Launches one game from the game copy (agent/env/games.py) and plays N runs back to back in it. Prints seed=<n> first,
 then one line per run: seed= character= outcome= floor= decisions= per_second= trace=, and at the end the totals.
-Game seeds come from the agent seed, so the same --seed replays the same runs; --game-seed fixes the first run's.
+Game seeds come from the agent seed, so the same --seed replays the same runs; --game-seeds fixes the first runs'.
+Each run's choices depend only on the agent seed and that run's game seed, so a run replays the same wherever it falls.
 --no-launch prints port=<n> and waits for a game launched some other way to connect. Game logs and traces go in
 runs/<time>/.
 """
@@ -41,10 +42,12 @@ def pick(decision: dict, rng: random.Random) -> int | list[int]:
     return rng.randrange(len(decision["actions"]))
 
 
-def play_runs(bridge: Bridge, runs: int, rng: random.Random, character: str, out: Path, first_seed: str | None = None):
+def play_runs(bridge: Bridge, runs: int, agent_seed: int, character: str, out: Path, game_seeds: list[str] = ()):
     """Plays runs back to back on a connected game, then closes the connection. Yields one summary dict per run."""
+    seeds = random.Random(agent_seed)
     for number in range(1, runs + 1):
-        seed = first_seed if number == 1 and first_seed else game_seed(rng)
+        seed = game_seeds[number - 1] if number <= len(game_seeds) else game_seed(seeds)
+        rng = random.Random(f"{agent_seed}/{seed}")
         trace_path = out / f"run-{number}.trace.jsonl"
         decisions = 0
         with trace_path.open("w", encoding="utf-8") as trace:
@@ -73,13 +76,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--runs", type=int, default=1, help="runs to play in one game process (default 1)")
     parser.add_argument("--seed", type=int, help="seed for the choices and game seeds (default: a new random one)")
-    parser.add_argument("--game-seed", help="the first run's game seed (default: drawn from --seed)")
+    parser.add_argument("--game-seeds", default="", help="the first runs' game seeds, comma-separated (default: drawn from --seed)")
     parser.add_argument("--character", default="IRONCLAD", help="character ID (default IRONCLAD)")
     parser.add_argument("--time-scale", type=float, default=20, help="game speed (default 20)")
     parser.add_argument("--no-launch", action="store_true", help="wait for a game launched some other way")
     args = parser.parse_args()
     seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
-    rng = random.Random(seed)
     out = Path("runs") / datetime.now().strftime("%Y%m%d-%H%M%S")
     out.mkdir(parents=True, exist_ok=True)
     # The seed first, so runs that fail can still be replayed.
@@ -95,7 +97,8 @@ def main() -> int:
         else:
             game = games.launch(bridge.port, log.resolve(), args.time_scale)
         bridge.accept()
-        for run in play_runs(bridge, args.runs, rng, args.character, out, args.game_seed):
+        game_seeds = [s for s in args.game_seeds.split(",") if s]
+        for run in play_runs(bridge, args.runs, seed, args.character, out, game_seeds):
             total_decisions += run["decisions"]
             print(" ".join(f"{key}={value:.1f}" if isinstance(value, float) else f"{key}={value}"
                            for key, value in run.items()), flush=True)

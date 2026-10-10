@@ -1,6 +1,6 @@
 # 008: PPO trainer
 
-Status: draft
+Status: approved
 
 ## Problem
 

@@ -63,7 +63,7 @@ The game waits for the agent as long as it takes; hangs are caught in Python. In
 - The same transpiler replaces every other delay in AutoSlay's code with one frame: after rooms, the overlay drain, polling, `UiHelper.Click`, ancient dialogue clicks. Patching state machines rather than methods avoids inlined async stubs. It logs how many methods and calls it changed, and stops the mod at startup if it changed none.
 - Every `Wait.For` in the mod (a wait that may legitimately time out) becomes a `Wait.Until` on every outcome it can have: a reward claim waits for the reward button's claimed or skipped signal; after an event option, the wait for the event's response also watches for the give-up confirmation; a closed event room waits for a combat, a screen or the map; an event resumed after combat waits for options, the map, a screen or the room closing. `Wait.For` is deleted.
 
-**Frame cap.** Headless, the game caps frames at the settings' limit (60). In run mode a postfix on the game's graphics setup removes the cap, kept only if the speed command shows more total steps per second and the determinism checks still pass.
+**Frame cap.** Headless, the game caps frames at the settings' limit (60). Removing the cap in run mode was measured and dropped: with 4 games, 7 of 62 runs failed against none of 120 with the cap, and one game's memory grew past 5 GB.
 
 ### Vocabulary
 
@@ -169,7 +169,7 @@ It runs one thread per game and prints steps per second (per game and total), ru
 - `mod/Bridge.cs`: connects at the first main menu; `hello` with game version and vocabulary; `ready`, `start`; no answer timeout; one connection across runs; ids reset per run.
 - `mod/RunLoop.cs` (replaces `mod/StartAutoSlay.cs`): the run loop, the game kept open after a run that ended normally, per-run reset, the unlock check.
 - `mod/RunProfile.cs`: the unlock prefixes, the fixed in-memory profile, no progress writes.
-- `mod/RunTiming.cs`: AutoSlay's delays become one frame, its timeouts and watchdog off; the frame cap.
+- `mod/RunTiming.cs`: AutoSlay's delays become one frame, its timeouts and watchdog off.
 - `mod/Wait.cs`: `Until` logs instead of throwing; `For` removed.
 - `mod/RunMode.cs`, `mod/RunLog.cs`: per-run seed and character; room handler attached once; end flag reset; combat counters.
 - `mod/GameState.cs`: the run, map, combat and card objects, moved from `Decision.cs`, `CombatSnapshot.cs` and `AgentMap.cs`.

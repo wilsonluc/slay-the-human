@@ -6,14 +6,14 @@ Where the project is going, in phases. A phase is a result the agent reaches, ch
 
 | Phase | Goal | Done when | Needs |
 |---|---|---|---|
-| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-006 (done: every decision goes to the agent); the training environment; PPO; evaluation and checkpoints; a results dashboard comparing generations (React and MUI X, hosted on GitHub Pages) |
+| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-007 (done: every decision goes to the agent; the training environment); PPO; evaluation and checkpoints; a results dashboard comparing generations (React and MUI X, hosted on GitHub Pages) |
 | 1.0 | Ironclad, ascension 0 | Evaluation win rate ≥ target | Phase 0 |
 | 1.1 - 1.10 | Ironclad, ascension 1 to 10 | Evaluation win rate ≥ target, per level | Ascension support |
 | 2 | Decided at the end of phase 1 | Recorded below as a decision | |
 
 The game has ascension levels 0 to 10, and they are cumulative: ascension *n* keeps every modifier of the levels below it (`AscensionManager.HasLevel` is `level >= n`). The playable characters are Ironclad, Silent, Defect, Necrobinder and Regent.
 
-**Speed.** Learning a full run from scratch likely takes tens of millions of steps. One game makes about 7 decisions a second, bound by its frame time, so the training environment (spec 007) runs several games at once: measured at about 6 times the speed with 8 copies on an 8-core desktop, before removing start-up and fixed waits. If training still turns out too slow, the next step is a combat-only environment, before any simulator of the game.
+**Speed.** Learning a full run from scratch likely takes tens of millions of steps. One game is bound by its frame time, so the training environment (spec 007) runs several games at once. Measured with random actions on an 8-core desktop: one game makes 7.4 steps a second (495 runs an hour, counting the time between runs); four games 27.7 (1,794 runs an hour); eight games 25.6, no faster, as the games then compete for the cores. That is about 2.4 million steps a day. If training turns out too slow, the next step is a combat-only environment, before any simulator of the game.
 
 **Ascension 10 ends later.** At ascension 10 the act 3 boss is followed by a second one on floor 49; ascension support must play to it, not stop at floor 48.
 

@@ -12,8 +12,8 @@
 - [x] 10. `encoding.py`: sets, sizes, scaling, map route summaries, action segments, mask, single picks, overflow. `test_encoding` round-trips every recording.
 - [x] 11. `reward.py` with its documentation. `test_reward` passes on hand-worked values.
 - [x] 12. `fake_game.py` and `environment.py`: reset/step/masks, hang detection, failures, step cap, illegal actions, traces and summary rows, set-size logging. `test_environment` passes in CI.
-- [ ] 13. Several games and the speed command: staggered `make_environments`; `random_agent.py` on the environment with `--games`, `--trace-every`, `--think-seconds`, `--replay`. A sweep of random runs with no overflow or unknown value; sizes set from it with margin; `--games 1` and `--games 8` figures recorded.
+- [x] 13. Several games and the speed command: staggered `make_environments`; `random_agent.py` on the environment with `--games`, `--trace-every`, `--think-seconds`, `--replay`. A sweep of random runs with no overflow or unknown value; sizes set from it with margin; `--games 1` and `--games 8` figures recorded.
 - [x] 14. Determinism: fresh vs after other runs, alone vs parallel, idle vs busy, two profiles, and a summary row's replay all give identical traces.
 - [x] 15. Failures on the real game: kill a game mid-run (truncated, logged with reason, kind and floor; relaunched at the next reset); 10 runs per process without a relaunch.
-- [ ] 16. Frame cap: uncapped in run mode, kept only if the speed command shows a gain and task 14's checks still pass.
-- [ ] 17. `README.md`, `docs/architecture.md`, `CONTEXT.md`, `ROADMAP.md`, `GAME_VERSION.md` updated; every acceptance criterion checked and ticked.
+- [x] 16. Frame cap: uncapped in run mode, kept only if the speed command shows a gain and task 14's checks still pass.
+- [x] 17. `README.md`, `docs/architecture.md`, `CONTEXT.md`, `ROADMAP.md`, `GAME_VERSION.md` updated; every acceptance criterion checked and ticked.

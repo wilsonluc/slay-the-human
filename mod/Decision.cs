@@ -72,7 +72,7 @@ internal static class Ui
     /// page, a rest site after an option), the old ones stay in the tree, queued for deletion, until the frame ends;
     /// clicking one throws.
     /// </summary>
-    public static List<T> Live<T>(Godot.Node parent) where T : Godot.Node =>
+    public static List<T> Live<T>(Godot.Node parent) where T : Godot.CanvasItem =>
         MegaCrit.Sts2.Core.AutoSlay.Helpers.UiHelper.FindAll<T>(parent)
             .Where(node => Godot.GodotObject.IsInstanceValid(node) && !node.IsQueuedForDeletion() && node.IsVisibleInTree())
             .ToList();

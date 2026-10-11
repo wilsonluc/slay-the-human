@@ -10,6 +10,9 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.AutoSlay.Handlers.Rooms;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Events;
@@ -163,11 +166,11 @@ internal static class AgentEvent
         decision.State["page"] = model.Description?.LocEntryKey;
         decision.State["options"] = new JsonArray(shown.Select(button => (JsonNode)new JsonObject
         {
-            ["text_key"] = button.Option.TextKey,
+            ["text_key"] = TextKey(model, button.Option),
             ["locked"] = button.Option.IsLocked,
             ["proceed"] = button.Option.IsProceed,
             ["deadly"] = owner is not null && (button.Option.WillKillPlayer?.Invoke(owner) ?? false),
-            ["relic"] = button.Option.Relic?.Id.Entry,
+            ["relic"] = Relic(button.Option)?.Id.Entry,
         }).ToArray());
         NEventOptionButton? chosen = null;
         for (var i = 0; i < shown.Count; i++)
@@ -185,6 +188,24 @@ internal static class AgentEvent
         await decision.RunAsync(ct);
         return chosen!;
     }
+
+    /// <summary>
+    /// An option's text key. One that offers a relic can be keyed by the relic's display name rather than a text key
+    /// (the Doll Room's choices); its page's options stem stands for it, with the relic named beside it.
+    /// </summary>
+    private static string TextKey(EventModel model, EventOption option)
+    {
+        var page = model.Description?.LocEntryKey;
+        if (option.TextKey.StartsWith(model.Id.Entry + ".") || page is null || !page.EndsWith(".description"))
+        {
+            return option.TextKey;
+        }
+        return page[..^".description".Length] + ".options";
+    }
+
+    /// <summary>The relic an option gives: its own, or the one its hover tip shows.</summary>
+    private static RelicModel? Relic(EventOption option) => option.Relic ??
+        option.HoverTips?.OfType<HoverTip>().Select(tip => tip.CanonicalModel).OfType<RelicModel>().FirstOrDefault();
 
     /// <summary>
     /// An option that gives up the run (such as TRIAL's double down) opens the game's abandon-run confirmation.

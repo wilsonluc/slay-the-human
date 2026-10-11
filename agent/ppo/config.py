@@ -40,7 +40,7 @@ class Config:
     failure_window: int = 100
     # The training run's seed; a new random one when not given, recorded either way.
     seed: int | None = None
-    # cpu, or cuda with a CUDA build of torch installed.
+    # Where the update trains: cpu, or cuda with a CUDA build of torch installed. The games always play on the CPU.
     device: str = "cpu"
     # Passed to the environment (agent/env/environment.py); its defaults.
     character: str = "IRONCLAD"

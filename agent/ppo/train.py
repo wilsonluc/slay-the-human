@@ -115,7 +115,10 @@ class Trainer:
         self.policy = Policy(len(vocabulary), config.embed, config.hidden, config.state).to(config.device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=config.lr, eps=1e-5)
         self.rng = np.random.default_rng(config.seed)
-        self.collector = Collector(envs, self.policy, config.seed, config.device)
+        # Collection runs one decision at a time, which is faster on the CPU (a GPU's per-call cost outweighs its
+        # speed at batch size one), so with a GPU the update trains on it and the games play a CPU copy.
+        self.player = self.policy if config.device == "cpu" else copy.deepcopy(self.policy).cpu()
+        self.collector = Collector(envs, self.player, config.seed)
         self.buffer = Buffer(config.steps, len(envs))
         self.kinds = {vocabulary.index("KIND", kind): kind for kind in encoding.KINDS}
         self.updates = self.steps = 0
@@ -138,6 +141,8 @@ class Trainer:
 
     def restore(self, state: dict) -> None:
         self.policy.load_state_dict(state["model"])
+        if self.player is not self.policy:
+            self.player.load_state_dict(state["model"])
         self.optimizer.load_state_dict(state["optimizer"])
         self.updates, self.steps = state["updates"], state["steps"]
         torch.set_rng_state(state["torch_rng"])
@@ -176,6 +181,8 @@ class Trainer:
         self.buffer.finish(last_value, self.config.gamma, self.config.lam)
         collected = time.monotonic()
         learner = update(self.policy, self.optimizer, self.buffer, self.config, self.rng, self.kinds)
+        if self.player is not self.policy:
+            self.player.load_state_dict(self.policy.state_dict())
         finished = time.monotonic()
         self.updates += 1
         self.steps += self.buffer.steps * self.buffer.games

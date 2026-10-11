@@ -21,8 +21,8 @@ log = logging.getLogger(__name__)
 
 
 class Collector:
-    def __init__(self, envs: list, policy: Policy, seed: int, device: str = "cpu") -> None:
-        self.envs, self.policy, self.device = envs, policy, device
+    def __init__(self, envs: list, policy: Policy, seed: int) -> None:
+        self.envs, self.policy = envs, policy  # the policy lives on the CPU
         self.generators = [torch.Generator().manual_seed(seed * 1000 + i) for i in range(len(envs))]
         self.obs: list = [None] * len(envs)  # None: the game's next step starts a new run
         self.masks: list = [None] * len(envs)
@@ -49,10 +49,10 @@ class Collector:
 
     def _evaluate(self, obs: dict, mask) -> tuple[torch.Tensor, torch.Tensor]:
         with torch.inference_mode():
-            logits, value = self.policy(as_tensors({key: value[None] for key, value in obs.items()}, self.device))
+            logits, value = self.policy(as_tensors({key: value[None] for key, value in obs.items()}))
         if mask is None:
             return None, value[0]
-        return masked(logits, torch.as_tensor(mask, device=self.device)[None])[0], value[0]
+        return masked(logits, torch.as_tensor(mask)[None])[0], value[0]
 
     def _column(self, game: int, buffer: Buffer) -> tuple[list[dict], float]:
         env, generator = self.envs[game], self.generators[game]

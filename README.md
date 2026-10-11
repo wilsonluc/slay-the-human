@@ -11,7 +11,7 @@ A reinforcement learning agent for **Slay the Spire 2**. It plays the game headl
 
 ## Setup
 
-You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0), [Claude Code](https://claude.com/claude-code), and Slay the Spire 2 installed through Steam.
+You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0), and Slay the Spire 2 installed through Steam.
 
 1. Log in to GitHub: `gh auth login`.
 2. Clone and enable the repo's git hooks. The pre-push hook blocks direct pushes to `main`.
@@ -20,18 +20,9 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
    cd slay-the-human
    git config core.hooksPath .githooks
    ```
-3. Install the [pr-tools](https://github.com/wilsonluc/pr-tools) plugins in Claude Code. They install at user scope, so they apply in every repo:
-   ```
-   /plugin marketplace add wilsonluc/pr-tools
-   /plugin install pr-reviewer@pr-tools
-   /plugin install pr-addresser@pr-tools
-   ```
-   - `pr-reviewer` reviews each PR against its built-in standards, `STANDARDS.md` and `CLAUDE.md`, and looks for bugs.
-   - `pr-addresser` works through review conversations: it checks each finding, fixes the confirmed ones, and replies to the rest.
-4. Check with `/plugin`: both plugins should show as enabled.
-5. Decompile the game: `sh tools/decompile.sh`. It checks the installed build against `GAME_VERSION.md` and writes the game's C# source to `decompiled/`. That code is Mega Crit's: it is gitignored and never committed.
-6. Build and install the mod, with the game closed: `sh tools/mod.sh`. It builds `mod/` against the game's own assemblies and installs it into the game's `mods/SlayTheHuman/` folder.
-7. The first time, start the game and answer **Yes** to its mods warning. The game saves the answer and quits. From the next start, it loads the mod, and `%APPDATA%\SlayTheSpire2\logs\godot.log` shows lines starting `[SlayTheHuman]`.
+3. Decompile the game: `sh tools/decompile.sh`. It checks the installed build against `GAME_VERSION.md` and writes the game's C# source to `decompiled/`. That code is Mega Crit's: it is gitignored and never committed.
+4. Build and install the mod, with the game closed: `sh tools/mod.sh`. It builds `mod/` against the game's own assemblies and installs it into the game's `mods/SlayTheHuman/` folder.
+5. The first time, start the game and answer **Yes** to its mods warning. The game saves the answer and quits. From the next start, it loads the mod, and `%APPDATA%\SlayTheSpire2\logs\godot.log` shows lines starting `[SlayTheHuman]`.
 
 ## Unattended runs and the training environment
 

@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Godot;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.AutoSlay;
 using MegaCrit.Sts2.Core.AutoSlay.Handlers.Rooms;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
 using MegaCrit.Sts2.Core.Combat;
@@ -38,7 +37,6 @@ internal static class AgentEvent
     private static readonly MethodInfo WaitForEventRoom = AccessTools.Method(typeof(EventRoomHandler), "WaitForEventRoom");
     private static readonly MethodInfo WaitForEventOptions = AccessTools.Method(typeof(EventRoomHandler), "WaitForEventOptions");
     private static readonly MethodInfo HandleEventCombat = AccessTools.Method(typeof(EventRoomHandler), "HandleEventCombat");
-    private static readonly MethodInfo DrainOverlayScreens = AccessTools.Method(typeof(AutoSlayer), "DrainOverlayScreensAsync");
 
     private static bool Prepare() => RunMode.WithAgent;
 
@@ -61,7 +59,7 @@ internal static class AgentEvent
             ct.ThrowIfCancellationRequested();
             if (ScreenOpen && Alive(eventRoom))
             {
-                await (Task)DrainOverlayScreens.Invoke(RunLoop.Slayer, new object[] { ct })!;
+                await RunLoop.DrainScreensAsync(ct);
                 continue;
             }
             if (!Alive(eventRoom))

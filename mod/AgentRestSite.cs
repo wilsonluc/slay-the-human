@@ -15,7 +15,8 @@ namespace SlayTheHuman;
 
 /// <summary>
 /// In run mode with an agent, the agent chooses among the rest site's options, and when to leave once the game allows
-/// it. AutoSlay picks an option at random. Choosing Smith leads to a card selection the agent also answers.
+/// it. AutoSlay picks an option at random. Choosing Smith leads to a card selection the agent also answers, and a
+/// screen an option opens (rewards) is answered too.
 /// </summary>
 [HarmonyPatch(typeof(RestSiteRoomHandler), nameof(RestSiteRoomHandler.HandleAsync))]
 internal static class AgentRestSite
@@ -57,10 +58,13 @@ internal static class AgentRestSite
                         // The option resolves when the game lets the player leave, or opens a screen of its own.
                         await Wait.Until(() => room!.ProceedButton.IsEnabled || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0,
                             RespondTimeout, $"rest site option {button.Option.OptionId} to resolve", ct);
+                        // A screen the option opens (resting with Tiny Mailbox gives potion rewards) is answered
+                        // through AutoSlay's screen loop, then the rest site carries on.
                         if ((NOverlayStack.Instance?.ScreenCount ?? 0) > 0)
                         {
-                            throw new InvalidOperationException(
-                                $"rest site option {button.Option.OptionId} opened a screen the agent cannot answer");
+                            await RunLoop.DrainScreensAsync(ct);
+                            await Wait.Until(() => room!.ProceedButton.IsEnabled, RespondTimeout,
+                                $"the rest site after option {button.Option.OptionId}", ct);
                         }
                     });
                 }

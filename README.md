@@ -55,7 +55,7 @@ When the game updates, `python -m agent.env.vocabulary --update` appends the new
 
 ## Training
 
-`python -m agent.ppo.train` trains a PPO policy on several games at once. Each training run gets its own folder, `runs/<time>/`, holding its record (`config.json`: every setting, the seed, the git commit, the game build and the vocabulary, schema, protocol and reward identities), one row of metrics per update (`metrics.csv`), its latest checkpoint (`checkpoint.pt`), its log (`train.log`, which also shows each game's time per update), and the games' logs, traces and `summary.jsonl`. Follow the log there rather than piping the command's output: in Git Bash a pipe slowed training to under half its speed.
+`python -m agent.ppo.train` trains a PPO policy on several games at once. Each training run gets its own folder, `runs/<time>/`, holding its record (`config.json`: every setting, the seed, the git commit, the game build and the vocabulary, schema, protocol and reward identities), one row of metrics per update (`metrics.csv`), its latest checkpoint (`checkpoint.pt`), its log (`train.log`, which also shows each game's time per update), and the games' logs, traces and `summary.jsonl`.
 
 ```
 python -m agent.ppo.train --games 4

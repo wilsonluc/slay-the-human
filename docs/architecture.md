@@ -34,10 +34,10 @@ agent/
     rollout.py       drives the environments and fills the buffer; takes a list of environments
     train.py         the PPO update (re-applies stored masks) and its metrics
     config.py        hyperparameters as a dataclass, from the command line
-  evaluate.py        fixed evaluation seeds kept apart from training; best action                 009
-  checkpoint.py      owns runs/<training run>/: config.json, metrics.csv, checkpoints; save and resume 008, last N and best 009
+  evaluate.py        fixed evaluation seeds kept apart from training; best action                 010
+  checkpoint.py      owns runs/<training run>/: config.json, metrics.csv, checkpoints; save and resume 008, last N and best 010
   tests/             one file per module, runnable in CI, plus a fake game (007) and a fake environment (008)
-dashboard/           React and MUI X on GitHub Pages; compares generations (evaluated checkpoints); reads exported runs/*/metrics.csv and config.json    010
+dashboard/           React and MUI X on GitHub Pages; compares generations (evaluated checkpoints); reads exported runs/*/metrics.csv and config.json    011
 runs/                gitignored: game logs, traces, run records, checkpoints, evaluation results
 pyproject.toml       Python version and pinned dependencies (numpy from 007, torch from 008)
 ```

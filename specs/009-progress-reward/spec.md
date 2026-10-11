@@ -1,6 +1,6 @@
 # 009: Progress reward
 
-Status: draft
+Status: approved
 
 ## Problem
 

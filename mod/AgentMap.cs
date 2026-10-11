@@ -42,7 +42,7 @@ internal static class AgentMap
         await Wait.Until(() =>
         {
             travelable = screen.IsVisibleInTree()
-                ? UiHelper.FindAll<NMapPoint>(screen)
+                ? Ui.Live<NMapPoint>(screen)
                     .Where(point => point.State == MapPointState.Travelable && point.IsEnabled).ToList()
                 : new List<NMapPoint>();
             return travelable.Count > 0;

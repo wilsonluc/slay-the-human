@@ -155,7 +155,7 @@ internal static class AgentEvent
     private static async Task<NEventOptionButton> ChooseAsync(Node eventRoom, List<NEventOptionButton> buttons,
         CancellationToken ct)
     {
-        var shown = UiHelper.FindAll<NEventOptionButton>(eventRoom);
+        var shown = Ui.Live<NEventOptionButton>(eventRoom);
         var model = buttons[0].Event;
         var owner = model.Owner;
         var decision = new Decision("event");
@@ -222,7 +222,7 @@ internal static class AgentEvent
         RunManager.Instance.DebugOnlyGetState()?.CurrentRoom is CombatRoom { IsPreFinished: false });
 
     /// <summary>The options that can be chosen now: enabled and not locked.</summary>
-    private static List<NEventOptionButton> Options(Node eventRoom) => UiHelper.FindAll<NEventOptionButton>(eventRoom)
+    private static List<NEventOptionButton> Options(Node eventRoom) => Ui.Live<NEventOptionButton>(eventRoom)
         .Where(button => !button.Option.IsLocked && button.IsEnabled).ToList();
 
     private static bool Alive(Node node) => GodotObject.IsInstanceValid(node) && node.IsInsideTree();

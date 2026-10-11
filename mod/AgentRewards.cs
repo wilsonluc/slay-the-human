@@ -60,7 +60,7 @@ internal static class AgentRewards
             {
                 return;
             }
-            var buttons = UiHelper.FindAll<NRewardButton>(screen)
+            var buttons = Ui.Live<NRewardButton>(screen)
                 .Where(button => button.Reward is not null && button.IsVisibleInTree()).ToList();
             var takeable = Takeable(screen).ToHashSet();
             var sets = UiHelper.FindAll<NLinkedRewardSet>(screen);
@@ -149,7 +149,7 @@ internal static class AgentRewards
     private static System.Collections.Generic.IEnumerable<NRewardButton> Takeable(NRewardsScreen screen)
     {
         var hasPotionSlot = Decision.Me().HasOpenPotionSlots;
-        return UiHelper.FindAll<NRewardButton>(screen).Where(button => button.Reward is not null &&
+        return Ui.Live<NRewardButton>(screen).Where(button => button.Reward is not null &&
             button.IsVisibleInTree() && button.IsEnabled && (button.Reward is not PotionReward || hasPotionSlot));
     }
 

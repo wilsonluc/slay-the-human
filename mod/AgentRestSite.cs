@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.AutoSlay.Handlers.Rooms;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
@@ -41,7 +42,7 @@ internal static class AgentRestSite
         while (!done)
         {
             ct.ThrowIfCancellationRequested();
-            var buttons = UiHelper.FindAll<NRestSiteButton>(room!);
+            var buttons = Ui.Live<NRestSiteButton>(room!);
             var decision = new Decision("rest");
             decision.State["options"] = new JsonArray(buttons.Select(button => (JsonNode)new JsonObject
             {
@@ -50,6 +51,7 @@ internal static class AgentRestSite
             for (var i = 0; i < buttons.Count; i++)
             {
                 var button = buttons[i];
+                var id = button.Option.OptionId;
                 if (button.Option.IsEnabled)
                 {
                     decision.Add(new JsonObject { ["kind"] = "rest", ["option"] = i }, async () =>
@@ -57,14 +59,14 @@ internal static class AgentRestSite
                         await UiHelper.Click(button);
                         // The option resolves when the game lets the player leave, or opens a screen of its own.
                         await Wait.Until(() => room!.ProceedButton.IsEnabled || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0,
-                            RespondTimeout, $"rest site option {button.Option.OptionId} to resolve", ct);
+                            RespondTimeout, $"rest site option {id} to resolve", ct);
                         // A screen the option opens (resting with Tiny Mailbox gives potion rewards) is answered
                         // through AutoSlay's screen loop, then the rest site carries on.
                         if ((NOverlayStack.Instance?.ScreenCount ?? 0) > 0)
                         {
                             await RunLoop.DrainScreensAsync(ct);
                             await Wait.Until(() => room!.ProceedButton.IsEnabled, RespondTimeout,
-                                $"the rest site after option {button.Option.OptionId}", ct);
+                                $"the rest site after option {id}", ct);
                         }
                     });
                 }
@@ -81,6 +83,8 @@ internal static class AgentRestSite
                 });
             }
             await decision.RunAsync(ct);
+            // Let the game free the buttons an option replaced before reading them again.
+            await Wait.NextFrame();
         }
     }
 }

@@ -64,6 +64,9 @@ internal static class AgentShop
         CancellationToken ct)
     {
         var left = false;
+        // Items the game refused to sell this visit (a potion it will not give), which stay stocked and would
+        // otherwise be offered, and refused, forever.
+        var refused = new System.Collections.Generic.HashSet<MerchantEntry>();
         while (!left)
         {
             ct.ThrowIfCancellationRequested();
@@ -74,9 +77,16 @@ internal static class AgentShop
             for (var i = 0; i < slots.Count; i++)
             {
                 var entry = slots[i].Entry;
-                if (entry.IsStocked && entry.EnoughGold && (entry is not MerchantPotionEntry || hasPotionSlot))
+                if (entry.IsStocked && entry.EnoughGold && (entry is not MerchantPotionEntry || hasPotionSlot) &&
+                    !refused.Contains(entry))
                 {
-                    decision.Add(new JsonObject { ["kind"] = "buy", ["item"] = i }, () => BuyAsync(inventory, entry, ct));
+                    decision.Add(new JsonObject { ["kind"] = "buy", ["item"] = i }, async () =>
+                    {
+                        if (!await BuyAsync(inventory, entry, ct))
+                        {
+                            refused.Add(entry);
+                        }
+                    });
                 }
             }
             decision.Add(new JsonObject { ["kind"] = "leave" }, async () =>
@@ -95,7 +105,7 @@ internal static class AgentShop
     }
 
     /// <summary>Buys an item the way its slot does. A relic that opens a rewards screen on pickup is answered here.</summary>
-    private static async Task BuyAsync(NMerchantInventory inventory, MerchantEntry entry, CancellationToken ct)
+    private static async Task<bool> BuyAsync(NMerchantInventory inventory, MerchantEntry entry, CancellationToken ct)
     {
         var item = Describe(entry).ToJsonString();
         MegaCrit.Sts2.Core.Logging.Log.Info($"[{ModEntry.Id}] buying {item}");
@@ -117,11 +127,16 @@ internal static class AgentShop
             await Wait.Until(() => (NOverlayStack.Instance?.ScreenCount ?? 0) == 0 || NOverlayStack.Instance?.Peek() != rewards,
                 ResultTimeout, "the rewards screen from a purchase to close", ct);
         }
-        await purchase;
+        var bought = await purchase;
         if (NOverlayStack.Instance?.Peek() is { } other)
         {
             throw new InvalidOperationException($"a purchase opened a screen the agent cannot answer: {other.GetType().Name}");
         }
+        if (!bought)
+        {
+            MegaCrit.Sts2.Core.Logging.Log.Info($"[{ModEntry.Id}] the shop refused {item}");
+        }
+        return bought;
     }
 
     private static JsonObject Describe(MerchantEntry entry)

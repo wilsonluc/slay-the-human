@@ -11,7 +11,7 @@ A reinforcement learning agent for **Slay the Spire 2**. It plays the game headl
 
 ## Setup
 
-You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0), [Claude Code](https://claude.com/claude-code), and Slay the Spire 2 installed through Steam.
+You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0), and Slay the Spire 2 installed through Steam.
 
 1. Log in to GitHub: `gh auth login`.
 2. Clone and enable the repo's git hooks. The pre-push hook blocks direct pushes to `main`.
@@ -20,18 +20,9 @@ You need Windows, `git` (with Git Bash), the GitHub CLI `gh`, the [.NET 9 SDK](h
    cd slay-the-human
    git config core.hooksPath .githooks
    ```
-3. Install the [pr-tools](https://github.com/wilsonluc/pr-tools) plugins in Claude Code. They install at user scope, so they apply in every repo:
-   ```
-   /plugin marketplace add wilsonluc/pr-tools
-   /plugin install pr-reviewer@pr-tools
-   /plugin install pr-addresser@pr-tools
-   ```
-   - `pr-reviewer` reviews each PR against its built-in standards, `STANDARDS.md` and `CLAUDE.md`, and looks for bugs.
-   - `pr-addresser` works through review conversations: it checks each finding, fixes the confirmed ones, and replies to the rest.
-4. Check with `/plugin`: both plugins should show as enabled.
-5. Decompile the game: `sh tools/decompile.sh`. It checks the installed build against `GAME_VERSION.md` and writes the game's C# source to `decompiled/`. That code is Mega Crit's: it is gitignored and never committed.
-6. Build and install the mod, with the game closed: `sh tools/mod.sh`. It builds `mod/` against the game's own assemblies and installs it into the game's `mods/SlayTheHuman/` folder.
-7. The first time, start the game and answer **Yes** to its mods warning. The game saves the answer and quits. From the next start, it loads the mod, and `%APPDATA%\SlayTheSpire2\logs\godot.log` shows lines starting `[SlayTheHuman]`.
+3. Decompile the game: `sh tools/decompile.sh`. It checks the installed build against `GAME_VERSION.md` and writes the game's C# source to `decompiled/`. That code is Mega Crit's: it is gitignored and never committed.
+4. Build and install the mod, with the game closed: `sh tools/mod.sh`. It builds `mod/` against the game's own assemblies and installs it into the game's `mods/SlayTheHuman/` folder.
+5. The first time, start the game and answer **Yes** to its mods warning. The game saves the answer and quits. From the next start, it loads the mod, and `%APPDATA%\SlayTheSpire2\logs\godot.log` shows lines starting `[SlayTheHuman]`.
 
 ## Unattended runs and the training environment
 
@@ -61,6 +52,20 @@ largest choices=20 deck=20 discard=20 ...
 - A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started with them.
 
 When the game updates, `python -m agent.env.vocabulary --update` appends the new build's names to `agent/env/vocabulary.json`; existing indices never move.
+
+## Training
+
+`python -m agent.ppo.train` trains a PPO policy on several games at once. Each training run gets its own folder, `runs/<time>/`, holding its record (`config.json`: every setting, the seed, the git commit, the game build and the vocabulary, schema, protocol and reward identities), one row of metrics per update (`metrics.csv`), its latest checkpoint (`checkpoint.pt`), its log (`train.log`, which also shows each game's time per update), and the games' logs, traces and `summary.jsonl`.
+
+```
+python -m agent.ppo.train --games 4
+python -m agent.ppo.train --resume runs/<time>
+```
+
+- Every setting is a flag (`--help` lists them with their defaults; `agent/ppo/config.py` gives the reason for each). `--games` is set per machine, like the speed command's.
+- A checkpoint is saved every `--checkpoint-every` updates and whenever training stops: at `--total-steps` (default 10 million, the roadmap's stop-and-look point), on Ctrl+C, on an error, or when more than `--failure-budget` of the last `--failure-window` runs failed. A single failed run is logged and training carries on.
+- `--resume` continues from the latest checkpoint with the same settings, losing at most the steps since it. A checkpoint made by code with another vocabulary, observation schema, protocol or reward refuses to load and names the difference; a vocabulary that only grew loads, with new embedding rows.
+- Training runs on the CPU by default. `--device cuda` uses a GPU once a CUDA build of torch is installed (see pytorch.org for the command matching your GPU).
 
 Run the agent's tests with `python -m unittest discover -s agent/tests -t .`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
 

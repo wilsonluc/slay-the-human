@@ -55,7 +55,7 @@ class EnvironmentTest(unittest.TestCase):
         env = self.env()
         obs, info = env.reset(seed="abcio")
         self.assertEqual(info["seed"], "ABC10", "the seed as the game reads it")
-        self.assertEqual(set(info), {"seed", "floor", "kind", "outcome", "outcome_reward", "scores"})
+        self.assertEqual(set(info), {"seed", "floor", "act", "kind", "outcome", "outcome_reward", "scores"})
         self.assertEqual(env.action_masks().shape, (encoding.ACTION_COUNT,))
         steps = play(env, random.Random(1))
         rewards, terminated, truncated, last = steps[-1]
@@ -92,6 +92,15 @@ class EnvironmentTest(unittest.TestCase):
         with self.assertLogs("agent.env.environment", "ERROR"):
             steps = play(env, random.Random(4))
         self.assertIn("told to quit", steps[-1][3]["outcome"])
+
+    def test_a_decision_too_big_for_the_observation_is_truncated_and_training_goes_on(self):
+        env = self.env(mode="overflow")
+        with self.assertLogs("agent.env.environment", "ERROR"):
+            steps = play(env, random.Random(5))
+        self.assertTrue(steps[-1][2])
+        self.assertIn("does not fit the observation", steps[-1][3]["outcome"])
+        env.reset()  # the next run starts a new game
+        self.assertEqual(env._launches, 2)
 
     @unittest.skipUnless(sys.platform == "win32", "memory is read on Windows")
     def test_a_game_past_the_memory_limit_is_stopped(self):

@@ -34,7 +34,7 @@ internal static class AgentBundle
     /// <summary>The bundle decision, for the screen AutoSlay hands over and for one a reward opens.</summary>
     public static async Task ChooseAsync(NChooseABundleSelectionScreen screen, CancellationToken ct)
     {
-        var bundles = UiHelper.FindAll<NCardBundle>(screen);
+        var bundles = Ui.Live<NCardBundle>(screen);
         var decision = new Decision("bundle");
         decision.State["bundles"] = new JsonArray(bundles.Select(bundle =>
             (JsonNode)new JsonArray(bundle.Bundle.Select(card => (JsonNode)GameState.Card(card)).ToArray())).ToArray());

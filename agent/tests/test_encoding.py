@@ -3,6 +3,7 @@
 import copy
 import json
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import numpy as np
@@ -75,6 +76,8 @@ class EncodingTest(unittest.TestCase):
             got = {name: (array.shape, array.dtype) for name, array in obs.items()}
             shapes = shapes or got
             self.assertEqual(got, shapes, decision["kind"])
+            self.assertEqual(got, {name: (shape, np.dtype(dtype)) for name, (shape, dtype) in encoding.OBSERVATION.items()},
+                             decision["kind"])
             self.assertEqual(mask.shape, (encoding.ACTION_COUNT,))
             for name, array in obs.items():
                 self.assertTrue(np.isfinite(array).all(), name)
@@ -84,6 +87,15 @@ class EncodingTest(unittest.TestCase):
                     self.assertTrue(set(np.unique(array)) <= {0.0, 1.0}, name)
                 if name.endswith("_ids") or name == "global_ids":
                     self.assertTrue(((array >= 0) & (array < len(self.vocabulary))).all(), name)
+
+    def test_schema_hash_follows_the_schema(self):
+        base = encoding.schema_hash()
+        self.assertEqual(base, encoding.schema_hash())
+        for name, changed in [("ACTIONS", encoding.ACTIONS + [("extra", 1)]), ("KINDS", encoding.KINDS[:-1]),
+                              ("SCHEMA_REVISION", encoding.SCHEMA_REVISION + 1),
+                              ("OBSERVATION", {**encoding.OBSERVATION, "cells": ((1,), "float32")})]:
+            with mock.patch.object(encoding, name, changed):
+                self.assertNotEqual(encoding.schema_hash(), base, name)
 
     def test_mask_is_exactly_the_legal_actions_and_maps_back(self):
         for decision in recordings():

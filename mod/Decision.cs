@@ -63,3 +63,17 @@ internal sealed class Decision(string kind, JsonObject? state = null)
 
     public static Player Me() => GameState.Me();
 }
+
+/// <summary>Reading the screen's nodes for a decision.</summary>
+internal static class Ui
+{
+    /// <summary>
+    /// The nodes of a type under a node that are still live. When the game replaces a screen's buttons (a new event
+    /// page, a rest site after an option), the old ones stay in the tree, queued for deletion, until the frame ends;
+    /// clicking one throws.
+    /// </summary>
+    public static List<T> Live<T>(Godot.Node parent) where T : Godot.CanvasItem =>
+        MegaCrit.Sts2.Core.AutoSlay.Helpers.UiHelper.FindAll<T>(parent)
+            .Where(node => Godot.GodotObject.IsInstanceValid(node) && !node.IsQueuedForDeletion() && node.IsVisibleInTree())
+            .ToList();
+}

@@ -20,9 +20,21 @@ Each term's weight keeps its weighted score within 1, so the return needs no sca
 each step's outcome reward and scores, so shaping can be recomputed with another discount without rewriting rewards.
 """
 
+import hashlib
+import json
+
 FULL_RUN = 48
 WEIGHTS = {"floor": 0.25, "hp": 0.25, "combat": 0.25, "kills": 0.25}
 OUTCOMES = {"win": 1.0, "loss": -1.0}
+# Raised whenever a score's definition changes, so the reward hash changes with it.
+REWARD_REVISION = 1
+
+
+def definition_hash() -> str:
+    """SHA-256 of the reward's weights, outcomes, run length and revision: a checkpoint trained on another reward
+    refuses to load."""
+    definition = {"weights": WEIGHTS, "outcomes": OUTCOMES, "full_run": FULL_RUN, "revision": REWARD_REVISION}
+    return hashlib.sha256(json.dumps(definition, sort_keys=True).encode()).hexdigest()
 
 
 class Scores:

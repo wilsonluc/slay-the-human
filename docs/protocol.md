@@ -169,7 +169,7 @@ The rewards still on the rewards screen.
 |---|---|---|
 | `rewards` | array | `{"type", "id", "amount", "group", "card"}`: `type` is `gold`, `potion`, `relic`, `card`, `special_card`, `card_removal` or `other`; `id` is the potion, relic or card ID when there is one; `amount` is the gold; `group` numbers the members of a "choose one" set, else `null`; `card` is a special card reward's card, else `null` |
 
-Actions: `{"kind": "take", "reward": <index into rewards>}` for each reward that can be taken now (a potion only with a free slot), and `{"kind": "proceed"}` to leave the rest.
+Actions: `{"kind": "take", "reward": <index into rewards>}` for each reward that can be taken now (a potion only with a free slot; not a card reward whose cards were skipped on this screen, which would show the same cards again), and `{"kind": "proceed"}` to leave the rest.
 
 ### card_reward
 

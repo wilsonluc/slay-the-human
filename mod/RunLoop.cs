@@ -29,6 +29,16 @@ internal static class RunLoop
     /// <summary>The AutoSlayer playing the current run.</summary>
     public static AutoSlayer? Slayer { get; private set; }
 
+    private static readonly System.Reflection.MethodInfo DrainOverlayScreens =
+        HarmonyLib.AccessTools.Method(typeof(AutoSlayer), "DrainOverlayScreensAsync");
+
+    /// <summary>
+    /// Answers every screen open over the room through AutoSlay's screen loop, which dispatches to the agent's handlers
+    /// (rewards, card choices). For screens a room opens partway through: an event option's rewards, a rest's.
+    /// </summary>
+    public static Task DrainScreensAsync(CancellationToken ct) =>
+        (Task)DrainOverlayScreens.Invoke(Slayer, new object[] { ct })!;
+
     private static bool Prepare() => RunMode.IsOn;
 
     private static void Postfix()

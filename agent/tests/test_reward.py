@@ -1,6 +1,7 @@
 """Tests for reward.py on hand-worked values. Run: python -m unittest discover -s agent/tests -t ."""
 
 import unittest
+from unittest import mock
 
 from agent.env import reward
 
@@ -70,6 +71,13 @@ class ShapingTest(unittest.TestCase):
 
     def test_weighted_scores_stay_within_one(self):
         self.assertLessEqual(sum(reward.WEIGHTS.values()), 1.0)
+
+    def test_definition_hash_follows_the_definition(self):
+        base = reward.definition_hash()
+        for name, changed in [("WEIGHTS", {**reward.WEIGHTS, "hp": 0.5}), ("OUTCOMES", {"win": 2.0, "loss": -1.0}),
+                              ("FULL_RUN", 49), ("REWARD_REVISION", reward.REWARD_REVISION + 1)]:
+            with mock.patch.object(reward, name, changed):
+                self.assertNotEqual(reward.definition_hash(), base, name)
 
 
 if __name__ == "__main__":

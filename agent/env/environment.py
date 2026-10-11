@@ -26,7 +26,7 @@ import numpy as np
 
 from agent.bridge import Bridge, BridgeError
 from agent.env import games, reward
-from agent.env.encoding import Encoder, describe
+from agent.env.encoding import Encoder, EncodingError, describe
 from agent.env.vocabulary import Vocabulary
 
 SEED_CHARACTERS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
@@ -63,9 +63,11 @@ class Environment:
         self._rng = random.Random(seed)
         self._bridge: Bridge | None = None
         self._game = None
-        self._launches = 0
+        # A folder that already holds this game's logs and runs (a resumed training run) continues their numbering.
+        self._launches = max((int(p.stem.rsplit("-", 1)[1]) for p in self.out.glob(f"{name}-*.log")
+                              if p.stem.rsplit("-", 1)[1].isdigit()), default=0)
         self._in_run = False
-        self._runs = 0
+        self._runs = self._last_run()
         self._largest: dict[str, int] = {}
 
     # Gymnasium shape
@@ -91,7 +93,11 @@ class Environment:
         if message["type"] != "decision":
             raise BridgeError(f"{self.name}: the run ended before its first decision")
         self._in_run = True
-        self._load(message)
+        try:
+            self._load(message)
+        except EncodingError as e:
+            self._kill()
+            raise BridgeError(f"{self.name}: the first decision does not fit the observation: {e}") from e
         self._report = reward.RunReport(self.gamma, self._scores)
         return self._obs, self._info(None)
 
@@ -113,8 +119,13 @@ class Environment:
         message = None
         try:
             message = self._answer(answer)
+            if message is not None and message["type"] == "decision":
+                self._load(message)
         except (BridgeError, TimeoutError, OSError) as e:
             self._failure = f"failed: {self._memory_failure or self._game_error() or e or 'no decision within the hang time'}"
+        except EncodingError as e:
+            # A decision too big for the observation ends its run as an error; the failure budget catches a pattern.
+            self._failure = f"failed: the decision does not fit the observation: {e}"
         self._record(decision, action, before)
         if self._failure:
             log.error("%s: run failed at a %s decision (floor %s, seed %s): %s; game log %s", self.name,
@@ -130,8 +141,6 @@ class Environment:
             self._in_run = False
             return self._end(before, terminated=True, outcome=outcome, outcome_reward=reward.outcome(outcome),
                              step_reward=step_reward, floor=message.get("floor"))
-        if message is not None:
-            self._load(message)
         step_reward = sum(reward.shaping(before, self._scores, self.gamma).values())
         self._report.add(before, self._scores, terminated=False)
         if self._steps >= self.step_cap:
@@ -143,6 +152,13 @@ class Environment:
 
     def action_masks(self) -> np.ndarray:
         return self._mask
+
+    def rng_state(self):
+        """The state of the generator that draws game seeds, for a checkpoint."""
+        return self._rng.getstate()
+
+    def set_rng_state(self, state) -> None:
+        self._rng.setstate(state)
 
     def close(self) -> None:
         """Quits the game: cleanly from the main menu, or by killing it mid-run."""
@@ -236,6 +252,14 @@ class Environment:
     def _floor(self):
         return self._decision["state"]["run"]["floor"]
 
+    def _last_run(self) -> int:
+        summary = self.out / "summary.jsonl"
+        if not summary.exists():
+            return 0
+        runs = [row.get("run", 0) for row in map(json.loads, summary.read_text(encoding="utf-8").splitlines())
+                if row.get("game") == self.name]
+        return max(runs, default=0)
+
     # Records
 
     def _record(self, decision: dict, action: int, before: dict) -> None:
@@ -266,7 +290,8 @@ class Environment:
             summary.write(json.dumps({"game": self.name, "run": self._runs, **record}) + "\n")
 
     def _info(self, outcome, outcome_reward: float = 0.0) -> dict:
-        return {"seed": self._seed, "floor": self._floor(), "kind": self._decision["kind"], "outcome": outcome,
+        return {"seed": self._seed, "floor": self._floor(), "act": self._decision["state"]["run"]["act"],
+                "kind": self._decision["kind"], "outcome": outcome,
                 "outcome_reward": outcome_reward, "scores": dict(self._scores)}
 
 

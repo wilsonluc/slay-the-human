@@ -4,14 +4,22 @@ name: tests
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
 permissions:
   contents: read
 
+# A newer push to the same branch replaces a run still going.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests:
+    # Draft PRs are checked locally while they are built; CI runs once a PR is ready and on every push after.
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     # tools/test.sh needs Git Bash (cygpath), like the tools themselves.
     runs-on: windows-latest
     timeout-minutes: 10

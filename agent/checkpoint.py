@@ -138,12 +138,12 @@ class TrainingRun:
 
 def _grow_embedding(state: dict, old: int, new: int) -> None:
     """Adds an embedding row for each value the vocabulary gained, initialised like the rest (normal, as nn.Embedding
-    does), and zero optimiser moments for them. The embedding is the model's first parameter (Policy registers it
-    first), so its optimiser state is entry 0."""
+    does), and zero optimiser moments for them. The optimiser numbers parameters in the model's order, which the
+    checkpoint records by name."""
     weight = state["model"]["embedding.weight"]
     rows = torch.randn(new - old, weight.shape[1], dtype=weight.dtype)
     state["model"]["embedding.weight"] = torch.cat([weight, rows])
-    moments = state["optimizer"]["state"].get(0, {})
+    moments = state["optimizer"]["state"].get(state["parameter_names"].index("embedding.weight"), {})
     for name, value in moments.items():
         if torch.is_tensor(value) and value.shape == weight.shape:
             moments[name] = torch.cat([value, value.new_zeros(new - old, value.shape[1])])

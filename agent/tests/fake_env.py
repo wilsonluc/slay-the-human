@@ -4,7 +4,8 @@ observation shapes (encoding.OBSERVATION), with no game.
 An episode is LENGTH steps. On every CHOICE_EVERY-th step two options are legal, at positions drawn at random, and the
 good one is marked in its numbers; on the others only end_turn is legal. The reward is 0 until the last step, which
 gives (good choices - half) / half: random play averages 0, the best play gets +1. So the reward comes long after the
-choices that earn it.
+choices that earn it. As in the real game, the observation shows everything that decides the outcome (the good choices
+made so far), so the value estimate can carry the reward back.
 
 fail_every truncates every n-th episode partway as a failure; truncate_at truncates every episode at that step, like
 the step limit.
@@ -70,6 +71,7 @@ class FakeEnvironment:
         obs = {key: np.zeros(shape, dtype) for key, (shape, dtype) in encoding.OBSERVATION.items()}
         obs["global_ids"][0] = self._kind_index
         obs["global"][0] = self._step / LENGTH
+        obs["global"][1] = self._good / CHOICES  # what a player can see so far, as in the real observation
         mask = np.zeros(encoding.ACTION_COUNT, bool)
         if self._step % CHOICE_EVERY == 0:
             slots = self._rng.sample(range(encoding.OPTIONS), 2)

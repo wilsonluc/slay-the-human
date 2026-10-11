@@ -27,6 +27,7 @@ class Collector:
         self.obs: list = [None] * len(envs)  # None: the game's next step starts a new run
         self.masks: list = [None] * len(envs)
         self.episode_steps = [0] * len(envs)
+        self.episode_return = [0.0] * len(envs)
         self._pool = ThreadPoolExecutor(len(envs), thread_name_prefix="game")
 
     def collect(self, buffer: Buffer) -> tuple[list[dict], np.ndarray]:
@@ -47,7 +48,7 @@ class Collector:
         self._pool.shutdown(wait=False, cancel_futures=True)
 
     def _evaluate(self, obs: dict, mask) -> tuple[torch.Tensor, torch.Tensor]:
-        with torch.no_grad():
+        with torch.inference_mode():
             logits, value = self.policy(as_tensors({key: value[None] for key, value in obs.items()}, self.device))
         if mask is None:
             return None, value[0]
@@ -67,11 +68,13 @@ class Collector:
             buffer.store(t, game, obs, mask, action, log_prob, float(value))
             next_obs, reward, terminated, truncated, info = env.step(action)
             self.episode_steps[game] += 1
+            self.episode_return[game] += reward
             bootstrap = float(self._evaluate(next_obs, None)[1]) if truncated else 0.0
             buffer.result(t, game, reward, terminated, truncated, bootstrap)
             if terminated or truncated:
                 ended.append({"game": game, "seed": info["seed"], "outcome": info["outcome"], "floor": info["floor"],
-                              "act": info.get("act", 0), "steps": self.episode_steps[game], "run": info.get("run")})
+                              "act": info.get("act", 0), "steps": self.episode_steps[game],
+                              "return": self.episode_return[game], "run": info.get("run")})
                 self.obs[game] = None
             else:
                 self.obs[game], self.masks[game] = next_obs, env.action_masks()
@@ -89,8 +92,9 @@ class Collector:
             except BridgeError as e:
                 log.error("%s: the run did not start (try %d of %d): %s", env.name, attempt, RESET_TRIES, e)
                 ended.append({"game": game, "seed": None, "outcome": f"failed: the run did not start: {e}",
-                              "floor": 0, "act": 0, "steps": 0, "run": None})
+                              "floor": 0, "act": 0, "steps": 0, "return": 0.0, "run": None})
                 if attempt == RESET_TRIES:
                     raise
         self.obs[game], self.masks[game] = obs, env.action_masks()
         self.episode_steps[game] = 0
+        self.episode_return[game] = 0.0

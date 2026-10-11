@@ -61,7 +61,8 @@ class Entities(nn.Module):
     def forward(self, x: torch.Tensor, present: torch.Tensor) -> torch.Tensor:
         rows = present > 0
         out = x.new_zeros(*x.shape[:-1], self.hidden)
-        out[rows] = self.net(x[rows])
+        if rows.any():  # many sets are empty at most decisions (shop, rewards, choices, cells)
+            out[rows] = self.net(x[rows])
         return out
 
 

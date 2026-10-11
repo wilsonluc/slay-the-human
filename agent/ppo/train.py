@@ -93,6 +93,7 @@ def game_metrics(ended: list[dict], buffer: Buffer) -> dict:
         "mean_floor": mean([run["floor"] for run in finished]),
         "mean_act": mean([run["act"] for run in finished]),
         "mean_steps_per_run": mean([run["steps"] for run in finished]),
+        "mean_return": mean([run["return"] for run in finished]),
         "legal_actions": float(buffer.mask.sum(-1).mean()),
         "failed_runs": sum(failed(run) for run in ended),
     }
@@ -127,6 +128,7 @@ class Trainer:
     def state(self) -> dict:
         return {
             "model": self.policy.state_dict(), "optimizer": self.optimizer.state_dict(),
+            "parameter_names": [name for name, _ in self.policy.named_parameters()],
             "updates": self.updates, "steps": self.steps,
             "torch_rng": torch.get_rng_state(), "sampling_rng": [g.get_state() for g in self.collector.generators],
             "minibatch_rng": self.rng.bit_generator.state, "game_seed_rng": [env.rng_state() for env in self.envs],

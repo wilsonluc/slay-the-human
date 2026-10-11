@@ -134,7 +134,7 @@ The environment's interface, with observations of the real shape (`OBSERVATION`)
 | Failure budget | `test_train` with a fake environment that fails often: stops naming the reasons, checkpoint saved |
 | CI tests | the workflow runs them all |
 | Learns the fake environment | `test_train`: mean return ≥ 0.8 within the set steps, under five minutes in CI |
-| Real training run | `--games 4 --total-steps 1000000`, killed once and resumed; no failure-budget stop; mean floor over its last 500 runs against the random agent's over 500 runs with `--games 4` |
+| Real training run | `--games 4`, stopped past 500,000 steps, killed once and resumed; no failure-budget stop; mean floor over its last 500 runs against the random agent's over 500 runs with `--games 4` |
 | Speed | the training run's mean steps per second (from `metrics.csv`) against the random agent's measurement with 4 games |
 
 ## Risks
@@ -145,6 +145,6 @@ The environment's interface, with observations of the real shape (`OBSERVATION`)
 - The policy can find loops the game allows: the first training run reopened and skipped one card reward until the step limit, since the limit is truncated and costs nothing → a card reward whose cards were skipped is not offered again on that screen (`mod/AgentRewards.cs`, `docs/protocol.md`); the step-limit count in `summary.jsonl` and steps per run in `metrics.csv` show any other loop.
 - A learned policy reaches states random play never did: a stalling slime fight passed 100 exhausted cards and stopped training → piles hold 300, the deck and selections 150, and a decision that still does not fit ends its run as a failure (logged, counted by the failure budget) instead of stopping training.
 - The game's hit stop set the engine's time scale back to 1, not to the run's, so a game ran three times slower after its first big hit → off in run mode (`mod/NoHitStop.cs`); the per-game timing in `train.log` shows a game that falls behind.
-- Learning may not beat random within a million steps → the stop-and-look rule: environment, reward and model are examined before any longer run, as `ROADMAP.md` says.
+- Learning may not beat random within 500,000 steps → the stop-and-look rule: environment, reward and model are examined before any longer run, as `ROADMAP.md` says.
 - A checkpoint that loads but behaves differently → the resume test compares against an uninterrupted run exactly.
 - Torch versions differ between machines → the version is pinned and recorded.

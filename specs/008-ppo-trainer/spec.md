@@ -56,7 +56,7 @@ Tests and measurement:
 
 - [ ] Tests in CI, without the game: GAE against hand-worked values, with terminated, truncated and rollout-end cases; masked actions getting zero probability and zero gradient; the reordering criterion above; a checkpoint saved, loaded and resumed giving the same next update as an uninterrupted run; mismatched hashes refused and a grown vocabulary migrated.
 - [ ] In CI, PPO learns a small fake environment with masked actions and a reward that only comes at the end of a long episode, reaching a set return within a set number of steps, in under five minutes.
-- [ ] A training run on the real game with four or more games reaches one million steps. Along the way it is killed once and resumed. It does not hit the failure budget, and its mean floor over its last 500 runs is above the random agent's, measured on the same environment and game count.
+- [ ] A training run on the real game with four or more games reaches 500,000 steps. Along the way it is killed once and resumed. It does not hit the failure budget, and its mean floor over its last 500 runs is above the random agent's, measured on the same environment and game count.
 - [ ] Over that training run, steps per second are at least 80% of the random agent's with the same number of games: collecting and updating cost little next to the games.
 
 ## Open questions

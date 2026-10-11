@@ -8,7 +8,7 @@
 - [x] 6. `agent/ppo/config.py` and `agent/ppo/rollout.py`: a thread per game, bootstrap on truncation, reset retries, ended runs returned.
 - [x] 7. `agent/ppo/train.py`: the update, metrics, the loop, step and failure budgets, interrupts. `test_train`: one update, identical runs from one seed, step budget, failure budget, three fake environments.
 - [x] 8. `agent/checkpoint.py`: run folder, `config.json`, `metrics.csv`, save, resume, hash checks, vocabulary growth; the environment's game-seed generator state. `test_checkpoint`: every field, resume equals uninterrupted, mismatches refused, growth migrated, a cut row repaired.
-- [ ] 9. PPO learns the fake environment in `test_train`, under five minutes in CI.
+- [x] 9. PPO learns the fake environment in `test_train`, under five minutes in CI.
 - [ ] 10. Real game: a short training run (a few updates) on 4 games, killed and resumed; the random agent's 500-run baseline with 4 games.
 - [ ] 11. Real game: the one-million-step training run, killed once and resumed; mean floor of its last 500 runs and its steps per second against the random agent's.
 - [ ] 12. `README.md`, `docs/architecture.md`, `CONTEXT.md`, `ROADMAP.md` updated; every acceptance criterion checked and ticked.

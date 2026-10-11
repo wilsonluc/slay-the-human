@@ -62,6 +62,20 @@ largest choices=20 deck=20 discard=20 ...
 
 When the game updates, `python -m agent.env.vocabulary --update` appends the new build's names to `agent/env/vocabulary.json`; existing indices never move.
 
+## Training
+
+`python -m agent.ppo.train` trains a PPO policy on several games at once. Each training run gets its own folder, `runs/<time>/`, holding its record (`config.json`: every setting, the seed, the git commit, the game build and the vocabulary, schema, protocol and reward identities), one row of metrics per update (`metrics.csv`), its latest checkpoint (`checkpoint.pt`), and the games' logs, traces and `summary.jsonl`.
+
+```
+python -m agent.ppo.train --games 4
+python -m agent.ppo.train --resume runs/<time>
+```
+
+- Every setting is a flag (`--help` lists them with their defaults; `agent/ppo/config.py` gives the reason for each). `--games` is set per machine, like the speed command's.
+- A checkpoint is saved every `--checkpoint-every` updates and whenever training stops: at `--total-steps` (default 10 million, the roadmap's stop-and-look point), on Ctrl+C, on an error, or when more than `--failure-budget` of the last `--failure-window` runs failed. A single failed run is logged and training carries on.
+- `--resume` continues from the latest checkpoint with the same settings, losing at most the steps since it. A checkpoint made by code with another vocabulary, observation schema, protocol or reward refuses to load and names the difference; a vocabulary that only grew loads, with new embedding rows.
+- Training runs on the CPU by default. `--device cuda` uses a GPU once a CUDA build of torch is installed (see pytorch.org for the command matching your GPU).
+
 Run the agent's tests with `python -m unittest discover -s agent/tests -t .`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
 
 ## Layout

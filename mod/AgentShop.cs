@@ -103,22 +103,22 @@ internal static class AgentShop
         {
             throw new InvalidOperationException($"the shop item is no longer for sale: {item}");
         }
-        if (entry is MerchantCardRemovalEntry removal)
-        {
-            // The removal slot's own overload; the card choice reaches the agent through the card selector.
-            await removal.OnTryPurchaseWrapper(inventory.Inventory);
-        }
-        else
-        {
-            await entry.OnTryPurchaseWrapper(inventory.Inventory);
-        }
+        // The removal slot's own overload; the card choice reaches the agent through the card selector. A relic that
+        // offers rewards on pickup (Orrery) opens a rewards screen, and its purchase only finishes once the rewards are
+        // settled, so the screen is answered while the purchase is still going.
+        var purchase = entry is MerchantCardRemovalEntry removal
+            ? removal.OnTryPurchaseWrapper(inventory.Inventory)
+            : entry.OnTryPurchaseWrapper(inventory.Inventory);
+        await Wait.Until(() => purchase.IsCompleted || NOverlayStack.Instance?.Peek() is NRewardsScreen, ResultTimeout,
+            $"the purchase of {item} to finish or open its rewards", ct);
         if (NOverlayStack.Instance?.Peek() is NRewardsScreen rewards)
         {
             await AgentRewards.ChooseAsync(rewards, ct);
             await Wait.Until(() => (NOverlayStack.Instance?.ScreenCount ?? 0) == 0 || NOverlayStack.Instance?.Peek() != rewards,
                 ResultTimeout, "the rewards screen from a purchase to close", ct);
         }
-        else if (NOverlayStack.Instance?.Peek() is { } other)
+        await purchase;
+        if (NOverlayStack.Instance?.Peek() is { } other)
         {
             throw new InvalidOperationException($"a purchase opened a screen the agent cannot answer: {other.GetType().Name}");
         }

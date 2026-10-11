@@ -55,7 +55,13 @@ internal static class Vocabulary
             // relic is named after the relic at run time (<EVENT>.pages.<PAGE>.options.<RELIC>), so its page's options
             // stem stands for it, with the relic named beside it.
             var prefix = model.Id.Entry + ".pages.";
-            foreach (var key in LocManager.Instance.GetTable(model.LocTable).Keys.Where(key => key.StartsWith(prefix)))
+            var table = LocManager.Instance.GetTable(model.LocTable).Keys.ToList();
+            // A page can also be worded by a key of its own outside pages (TRIAL.trialFormat).
+            foreach (var key in table.Where(key => key.StartsWith(model.Id.Entry + ".") && !key.StartsWith(prefix)))
+            {
+                keys.Add("EVENT_TEXT." + key);
+            }
+            foreach (var key in table.Where(key => key.StartsWith(prefix)))
             {
                 keys.Add("EVENT_TEXT." + key);
                 keys.Add("EVENT_TEXT." + key[..key.LastIndexOf('.')]);

@@ -121,7 +121,9 @@ class TrainingRun:
 
     def load(self, vocabulary: Vocabulary) -> dict:
         """The latest checkpoint, checked against the current code, with a grown vocabulary migrated."""
-        state = torch.load(self.checkpoint_file, weights_only=False)
+        # On the CPU: the model and optimiser move their state to their own device when loaded, so a checkpoint
+        # trained on a GPU loads anywhere, and the vocabulary migration builds its rows on one device.
+        state = torch.load(self.checkpoint_file, weights_only=False, map_location="cpu")
         current = identities(vocabulary)
         mismatches = [f"{name}: checkpoint {state['identities'][name]}, current {value}"
                       for name, value in current.items() if state["identities"][name] != value]

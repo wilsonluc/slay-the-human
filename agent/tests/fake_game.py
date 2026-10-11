@@ -7,7 +7,8 @@ It is launched exactly like the game (agent/env/games.py), with Python as the ex
 After each start it plays recorded decisions (recordings/decisions.jsonl) in order, the first N of them, checks each
 answer the way the mod does, then ends the run with run_end and waits at ready again. Modes make it misbehave:
 hang (stops answering partway through a run), exit (quits partway through), version (another protocol version),
-game-version (another game version), unknown (a card the vocabulary lacks), memory (allocates 400 MB and stops answering).
+game-version (another game version), unknown (a card the vocabulary lacks), memory (allocates 400 MB and stops answering),
+overflow (from the second decision, a deck too big for the observation).
 """
 
 import argparse
@@ -71,6 +72,8 @@ def main() -> int:
                 print("[SlayTheHuman] run error: the fake game was told to quit", file=log, flush=True)
                 return 1
             decision = {**recorded, "id": number}
+            if args.mode == "overflow" and number >= 2:
+                decision["state"]["run"]["deck"] = decision["state"]["run"]["deck"][:1] * 500
             if args.mode == "unknown":
                 decision = json.loads(json.dumps(decision).replace('"STRIKE_IRONCLAD"', '"NOT_A_CARD"'))
             send(decision)

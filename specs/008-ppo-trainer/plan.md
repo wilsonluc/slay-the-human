@@ -143,6 +143,8 @@ The environment's interface, with observations of the real shape (`OBSERVATION`)
 - 100 KB a step of observations → measured; IDs as int32; rollout steps are a setting.
 - The fake environment could be learned without the long-discount machinery working → its reward only comes at the end, 90 steps after the first choice, so GAE has to carry it.
 - The policy can find loops the game allows: the first training run reopened and skipped one card reward until the step limit, since the limit is truncated and costs nothing → a card reward whose cards were skipped is not offered again on that screen (`mod/AgentRewards.cs`, `docs/protocol.md`); the step-limit count in `summary.jsonl` and steps per run in `metrics.csv` show any other loop.
+- A learned policy reaches states random play never did: a stalling slime fight passed 100 exhausted cards and stopped training → piles hold 300, the deck and selections 150, and a decision that still does not fit ends its run as a failure (logged, counted by the failure budget) instead of stopping training.
+- The game's hit stop set the engine's time scale back to 1, not to the run's, so a game ran three times slower after its first big hit → off in run mode (`mod/NoHitStop.cs`); the per-game timing in `train.log` shows a game that falls behind.
 - Learning may not beat random within a million steps → the stop-and-look rule: environment, reward and model are examined before any longer run, as `ROADMAP.md` says.
 - A checkpoint that loads but behaves differently → the resume test compares against an uninterrupted run exactly.
 - Torch versions differ between machines → the version is pinned and recorded.

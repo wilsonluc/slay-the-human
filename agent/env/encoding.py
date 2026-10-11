@@ -24,15 +24,16 @@ from agent.env.vocabulary import Vocabulary
 HAND = 10
 ENEMIES = 8
 POTIONS = 5
-DECK = 100
-PILE = 100
+DECK = 150
+# Long fights fill piles with status cards (a slime fight's Slimed passed 100 exhausted cards).
+PILE = 300
 RELICS = 40
 POWERS = 20
 ENEMY_POWERS = 10
 INTENTS = 3
 MAP = 128
 REWARDS = 10
-CHOICES = 100
+CHOICES = 150  # a selection from the deck lists every card in it
 OPTIONS = 10
 SHOP = 20
 BUNDLES = 4

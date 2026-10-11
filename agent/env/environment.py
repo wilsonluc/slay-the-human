@@ -26,7 +26,7 @@ import numpy as np
 
 from agent.bridge import Bridge, BridgeError
 from agent.env import games, reward
-from agent.env.encoding import Encoder, describe
+from agent.env.encoding import Encoder, EncodingError, describe
 from agent.env.vocabulary import Vocabulary
 
 SEED_CHARACTERS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
@@ -93,7 +93,11 @@ class Environment:
         if message["type"] != "decision":
             raise BridgeError(f"{self.name}: the run ended before its first decision")
         self._in_run = True
-        self._load(message)
+        try:
+            self._load(message)
+        except EncodingError as e:
+            self._kill()
+            raise BridgeError(f"{self.name}: the first decision does not fit the observation: {e}") from e
         self._report = reward.RunReport(self.gamma, self._scores)
         return self._obs, self._info(None)
 
@@ -115,8 +119,13 @@ class Environment:
         message = None
         try:
             message = self._answer(answer)
+            if message is not None and message["type"] == "decision":
+                self._load(message)
         except (BridgeError, TimeoutError, OSError) as e:
             self._failure = f"failed: {self._memory_failure or self._game_error() or e or 'no decision within the hang time'}"
+        except EncodingError as e:
+            # A decision too big for the observation ends its run as an error; the failure budget catches a pattern.
+            self._failure = f"failed: the decision does not fit the observation: {e}"
         self._record(decision, action, before)
         if self._failure:
             log.error("%s: run failed at a %s decision (floor %s, seed %s): %s; game log %s", self.name,
@@ -132,8 +141,6 @@ class Environment:
             self._in_run = False
             return self._end(before, terminated=True, outcome=outcome, outcome_reward=reward.outcome(outcome),
                              step_reward=step_reward, floor=message.get("floor"))
-        if message is not None:
-            self._load(message)
         step_reward = sum(reward.shaping(before, self._scores, self.gamma).values())
         self._report.add(before, self._scores, terminated=False)
         if self._steps >= self.step_cap:

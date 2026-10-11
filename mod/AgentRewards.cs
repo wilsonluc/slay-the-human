@@ -52,11 +52,13 @@ internal static class AgentRewards
         while (!done)
         {
             ct.ThrowIfCancellationRequested();
-            // After a reward is taken the screen can briefly offer nothing; wait until it closes or offers a choice.
+            // After a reward is taken the screen can briefly offer nothing; wait until it closes or offers a choice. A
+            // screen already handled can be handed over again while it closes, with the map open behind it and
+            // nothing left to take: that one is done.
             await Wait.Until(() => !Alive(screen) || Takeable(screen).Any() ||
-                UiHelper.FindFirst<NProceedButton>(screen) is { IsEnabled: true }, CloseTimeout,
+                UiHelper.FindFirst<NProceedButton>(screen) is { IsEnabled: true } || Finished(screen), CloseTimeout,
                 "the rewards screen to offer a reward or proceed", ct);
-            if (!Alive(screen))
+            if (!Alive(screen) || Finished(screen))
             {
                 return;
             }
@@ -152,6 +154,10 @@ internal static class AgentRewards
         return Ui.Live<NRewardButton>(screen).Where(button => button.Reward is not null &&
             button.IsVisibleInTree() && button.IsEnabled && (button.Reward is not PotionReward || hasPotionSlot));
     }
+
+    /// <summary>The map is open behind the screen and it has nothing left to take or proceed with.</summary>
+    private static bool Finished(NRewardsScreen screen) => (NMapScreen.Instance?.IsOpen ?? false) &&
+        !Takeable(screen).Any() && UiHelper.FindFirst<NProceedButton>(screen) is not { IsEnabled: true };
 
     private static bool Alive(NRewardsScreen screen) => GodotObject.IsInstanceValid(screen) && screen.IsVisibleInTree();
 

@@ -142,6 +142,7 @@ The environment's interface, with observations of the real shape (`OBSERVATION`)
 - Threads per game make inference batch-of-one → the model is small and torch single-threaded per thread; the speed criterion measures it. If it falls short, inference batches across games instead.
 - 100 KB a step of observations → measured; IDs as int32; rollout steps are a setting.
 - The fake environment could be learned without the long-discount machinery working → its reward only comes at the end, 90 steps after the first choice, so GAE has to carry it.
+- The policy can find loops the game allows: the first training run reopened and skipped one card reward until the step limit, since the limit is truncated and costs nothing → a card reward whose cards were skipped is not offered again on that screen (`mod/AgentRewards.cs`, `docs/protocol.md`); the step-limit count in `summary.jsonl` and steps per run in `metrics.csv` show any other loop.
 - Learning may not beat random within a million steps → the stop-and-look rule: environment, reward and model are examined before any longer run, as `ROADMAP.md` says.
 - A checkpoint that loads but behaves differently → the resume test compares against an uninterrupted run exactly.
 - Torch versions differ between machines → the version is pinned and recorded.

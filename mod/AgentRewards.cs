@@ -22,6 +22,9 @@ namespace SlayTheHuman;
 /// <summary>
 /// In run mode with an agent, the agent takes rewards one at a time and chooses when to move on. AutoSlay takes them
 /// all in screen order. A card reward's own screen is answered by <see cref="AgentCardReward"/>.
+///
+/// A card reward whose cards were skipped is not offered again on that screen. The game lets a player reopen it, but
+/// it shows the same cards, so it offers no new choice, and an agent could reopen and skip it forever.
 /// </summary>
 [HarmonyPatch(typeof(RewardsScreenHandler), nameof(RewardsScreenHandler.HandleAsync))]
 internal static class AgentRewards
@@ -45,6 +48,7 @@ internal static class AgentRewards
     public static async Task ChooseAsync(NRewardsScreen screen, CancellationToken ct)
     {
         var done = false;
+        var skipped = new System.Collections.Generic.HashSet<NRewardButton>();
         while (!done)
         {
             ct.ThrowIfCancellationRequested();
@@ -65,9 +69,15 @@ internal static class AgentRewards
             for (var i = 0; i < buttons.Count; i++)
             {
                 var button = buttons[i];
-                if (takeable.Contains(button))
+                if (takeable.Contains(button) && !skipped.Contains(button))
                 {
-                    decision.Add(new JsonObject { ["kind"] = "take", ["reward"] = i }, () => TakeAsync(screen, button, ct));
+                    decision.Add(new JsonObject { ["kind"] = "take", ["reward"] = i }, async () =>
+                    {
+                        if (await TakeAsync(screen, button, ct))
+                        {
+                            skipped.Add(button);
+                        }
+                    });
                 }
             }
             if (UiHelper.FindFirst<NProceedButton>(screen) is { IsEnabled: true } proceed)
@@ -84,14 +94,19 @@ internal static class AgentRewards
         }
     }
 
-    /// <summary>Takes a reward. A card reward opens its own screen, which is waited out here.</summary>
-    private static async Task TakeAsync(NRewardsScreen screen, NRewardButton button, CancellationToken ct)
+    /// <summary>
+    /// Takes a reward. A card reward opens its own screen, which is waited out here. Returns whether the reward was given
+    /// back (a card reward whose cards were skipped).
+    /// </summary>
+    private static async Task<bool> TakeAsync(NRewardsScreen screen, NRewardButton button, CancellationToken ct)
     {
-        // The button says when the reward is settled: claimed, or given back (a card reward whose cards were skipped).
+        // The button says when the reward is settled: claimed, or given back.
         var settled = false;
+        var givenBack = false;
         void OnSettled(NRewardButton _) => settled = true;
+        void OnGivenBack(NRewardButton _) => settled = givenBack = true;
         button.RewardClaimed += OnSettled;
-        button.RewardSkipped += OnSettled;
+        button.RewardSkipped += OnGivenBack;
         try
         {
             await UiHelper.Click(button);
@@ -118,13 +133,14 @@ internal static class AgentRewards
                 throw new InvalidOperationException($"a reward opened a screen the agent cannot answer: {other.GetType().Name}");
             }
             await Wait.Until(() => settled, ClaimTimeout, "the reward to be claimed or given back", ct);
+            return givenBack;
         }
         finally
         {
             if (GodotObject.IsInstanceValid(button))
             {
                 button.RewardClaimed -= OnSettled;
-                button.RewardSkipped -= OnSettled;
+                button.RewardSkipped -= OnGivenBack;
             }
         }
     }

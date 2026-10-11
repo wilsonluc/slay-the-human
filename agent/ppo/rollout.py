@@ -6,6 +6,7 @@ the threads interleave. The policy's weights do not change while collecting.
 """
 
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -28,6 +29,8 @@ class Collector:
         self.masks: list = [None] * len(envs)
         self.episode_steps = [0] * len(envs)
         self.episode_return = [0.0] * len(envs)
+        # Per game, for the last rollout: seconds spent in the game's steps, in the policy, and in all.
+        self.timing: list[dict] = []
         self._pool = ThreadPoolExecutor(len(envs), thread_name_prefix="game")
 
     def collect(self, buffer: Buffer) -> tuple[list[dict], np.ndarray]:
@@ -37,8 +40,13 @@ class Collector:
         torch.set_num_threads(1)  # one thread per game already; more would fight over the cores
         try:
             self.policy.eval()
+            self.timing = [{} for _ in self.envs]
+            began = time.monotonic()
             columns = [self._pool.submit(self._column, game, buffer) for game in range(len(self.envs))]
             results = [column.result() for column in columns]
+            total = time.monotonic() - began
+            for timing in self.timing:
+                timing["waited"] = total - timing["seconds"]
         finally:
             torch.set_num_threads(threads)
         ended = [run for runs, _ in results for run in runs]
@@ -57,16 +65,21 @@ class Collector:
     def _column(self, game: int, buffer: Buffer) -> tuple[list[dict], float]:
         env, generator = self.envs[game], self.generators[game]
         ended: list[dict] = []
+        began, in_game, in_policy = time.monotonic(), 0.0, 0.0
         for t in range(buffer.steps):
             if self.obs[game] is None:
                 self._reset(game, ended)
             obs, mask = self.obs[game], self.masks[game]
+            thought = time.monotonic()
             logits, value = self._evaluate(obs, mask)
             probs = torch.softmax(logits, -1).cpu()
             action = int(torch.multinomial(probs, 1, generator=generator))
             log_prob = float(torch.log_softmax(logits, -1)[action])
             buffer.store(t, game, obs, mask, action, log_prob, float(value))
+            stepped = time.monotonic()
+            in_policy += stepped - thought
             next_obs, reward, terminated, truncated, info = env.step(action)
+            in_game += time.monotonic() - stepped
             self.episode_steps[game] += 1
             self.episode_return[game] += reward
             bootstrap = float(self._evaluate(next_obs, None)[1]) if truncated else 0.0
@@ -79,6 +92,7 @@ class Collector:
             else:
                 self.obs[game], self.masks[game] = next_obs, env.action_masks()
         last = 0.0 if self.obs[game] is None else float(self._evaluate(self.obs[game], None)[1])
+        self.timing[game] = {"seconds": time.monotonic() - began, "game": in_game, "policy": in_policy}
         return ended, last
 
     def _reset(self, game: int, ended: list[dict]) -> None:

@@ -223,6 +223,11 @@ def main(argv=None) -> int:
         run = TrainingRun.create(config.as_dict(), vocabulary)
         state = None
         log.info("training run %s, seed %d", run.folder, config.seed)
+    # The log also goes to the training run's folder; follow it there rather than piping the output, which on
+    # Windows (Git Bash) slowed a training run to under half its speed.
+    file_log = logging.FileHandler(run.folder / "train.log", encoding="utf-8")
+    file_log.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    logging.getLogger().addHandler(file_log)
     envs = make_environments(config.games, run.folder, seed=config.seed, character=config.character,
                              gamma=config.gamma, hang_seconds=config.hang_seconds, step_cap=config.step_cap,
                              trace_every=config.trace_every, time_scale=config.time_scale, vocabulary=vocabulary)

@@ -91,7 +91,8 @@ class FakeEnvironment:
     def _end(self, outcome: str, step_reward: float, terminated: bool):
         info = self._info(outcome)
         zero = reward.zero()
-        info["run"] = {"contribution": dict(zero), "highest": dict(zero), "final": dict(zero)}
+        info["run"] = {"contribution": dict(zero), "highest": dict(zero), "final": dict(zero),
+                       "card_rewards": {"offered": 1, "taken": 0}}
         return self._obs, step_reward, terminated, not terminated, info
 
     def _info(self, outcome) -> dict:

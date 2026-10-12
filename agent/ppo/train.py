@@ -42,7 +42,8 @@ class FailureBudget(Exception):
 
 def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, config: Config,
            rng: np.random.Generator, kinds: dict[int, str]) -> dict:
-    """One PPO update over the rollout. The learner's metrics come from the first epoch."""
+    """One PPO update over the rollout. The losses and entropies come from the first epoch; approximate KL and the clip
+    fraction from the last, so they measure how far the whole update moved the policy."""
     policy.train()
     stats = collections.defaultdict(list)
     entropy_of = collections.defaultdict(list)
@@ -65,16 +66,18 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
             policy_loss = -torch.min(ratio * advantage,
                                      ratio.clamp(1 - config.clip, 1 + config.clip) * advantage).mean()
             value_loss = 0.5 * ((value - returns) ** 2).mean()
-            loss = policy_loss + config.value_coef * value_loss - config.entropy_coef * entropy.mean()
+            loss = policy_loss + config.value_coef * value_loss - config.entropy_coef * by_kind(entropy, batch["kind"])
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(policy.parameters(), config.max_grad_norm)
             optimizer.step()
 
-            if epoch == 0:
+            if epoch == config.epochs - 1:
                 with torch.no_grad():
                     stats["approx_kl"].append(float(((ratio - 1) - log_ratio).mean()))
                     stats["clip_fraction"].append(float(((ratio - 1).abs() > config.clip).float().mean()))
+            if epoch == 0:
+                with torch.no_grad():
                     stats["policy_loss"].append(float(policy_loss))
                     stats["value_loss"].append(float(value_loss))
                     stats["entropy"].append(float(entropy.mean()))
@@ -87,6 +90,15 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
     for kind in encoding.KINDS:
         metrics[f"entropy_{kind}"] = float(np.mean(entropy_of[kind])) if entropy_of[kind] else ""
     return metrics
+
+
+def by_kind(values: torch.Tensor, kinds) -> torch.Tensor:
+    """The mean of each decision kind's mean: every kind in the minibatch weighs the same, however many of its steps
+    there are. Averaged over steps, the entropy bonus would go almost all to combat, and the rare decisions that build
+    the deck (card rewards, rest sites, the map) would settle on one choice early and stop trying the others."""
+    _, kind = torch.unique(torch.as_tensor(kinds, device=values.device), return_inverse=True)
+    sums = torch.zeros(int(kind.max()) + 1, device=values.device, dtype=values.dtype).index_add(0, kind, values)
+    return (sums / torch.bincount(kind)).mean()
 
 
 def game_metrics(ended: list[dict], buffer: Buffer) -> dict:
@@ -103,11 +115,18 @@ def game_metrics(ended: list[dict], buffer: Buffer) -> dict:
         "turns_per_combat": mean([run["run"]["turns_per_combat"] for run in finished
                                   if run["run"] and run["run"].get("turns_per_combat") is not None]),
         "legal_actions": float(buffer.mask.sum(-1).mean()),
+        "card_rewards_taken": share([run["run"]["card_rewards"] for run in finished if run["run"]]),
         "failed_runs": sum(failed(run) for run in ended),
     }
     for term in reward.WEIGHTS:
         metrics[f"contribution_{term}"] = mean([run["run"]["contribution"][term] for run in finished if run["run"]])
     return metrics
+
+
+def share(counts: list[dict]) -> float | str:
+    """Cards picked out of card rewards offered, over the runs."""
+    offered = sum(count["offered"] for count in counts)
+    return sum(count["taken"] for count in counts) / offered if offered else ""
 
 
 def failed(run: dict) -> bool:

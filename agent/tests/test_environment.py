@@ -62,9 +62,23 @@ class EnvironmentTest(unittest.TestCase):
         rewards, terminated, truncated, last = steps[-1]
         self.assertTrue(terminated and not truncated)
         self.assertEqual((last["outcome"], last["outcome_reward"]), ("loss", 0.0))  # a loss costs nothing of its own
-        self.assertEqual(set(last["run"]), {"contribution", "highest", "final", "turns_per_combat"})
+        self.assertEqual(set(last["run"]), {"contribution", "highest", "final", "turns_per_combat", "card_rewards"})
         self.assertGreater(last["run"]["turns_per_combat"], 0, "the recordings include a combat")
         self.assertTrue(all(not t and not tr for _, t, tr, _ in steps[:-1]))
+
+    def test_card_rewards_are_counted_once_per_rewards_screen(self):
+        env = self.env()
+        env.reset(seed="ABC")
+        screen = lambda *types: {"kind": "reward", "actions": [], "state": {"reward": {"rewards": [
+            {"type": t} for t in types]}}}
+        pick = {"kind": "card_reward", "actions": [{"kind": "pick", "card": 0}, {"kind": "alternative"}]}
+        combat = {"kind": "combat", "actions": []}
+        # Two card rewards on one screen: the gold is taken (the screen comes back), one card picked, one left.
+        for decision, answer in [(screen("gold", "card", "card"), 0), (screen("card", "card"), 0), (pick, 0),
+                                 (screen("card"), 0), (combat, 0),
+                                 (screen("card"), 0), (pick, 1), (screen("card"), 0), (combat, 0)]:
+            env._count_cards(decision, answer)
+        self.assertEqual(env._cards, {"offered": 3, "taken": 1})
 
     def test_a_new_seed_is_drawn_and_recorded(self):
         env = self.env()

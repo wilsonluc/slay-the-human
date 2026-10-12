@@ -89,6 +89,8 @@ class Environment:
         self._failure: str | None = None
         self._scores_of = reward.Scores()
         self._combat_turns: dict[int, int] = {}  # combats won before it -> the combat's last turn, for each combat
+        self._cards = {"offered": 0, "taken": 0}  # card rewards on the rewards screens, and cards picked from them
+        self._on_rewards = False
         try:
             self._bridge.start(self._seed, self.character, self.hang_seconds)
             message = self._bridge.next(self.hang_seconds)
@@ -121,6 +123,7 @@ class Environment:
         self._actions.append(action)
         before, decision = self._scores, self._decision
         answer = self._legal[action]
+        self._count_cards(decision, answer)
         message = None
         try:
             message = self._answer(answer)
@@ -265,6 +268,15 @@ class Environment:
                 self._largest[name] = size
                 log.info("%s: largest %s so far: %d", self.name, name, size)
 
+    def _count_cards(self, decision: dict, answer) -> None:
+        """Counts the card rewards a rewards screen offers, once per visit to it, and the cards picked from them."""
+        kind = decision["kind"]
+        if kind == "reward" and not self._on_rewards:
+            self._cards["offered"] += sum(r["type"] == "card" for r in decision["state"]["reward"]["rewards"])
+        elif kind == "card_reward" and self._on_rewards and decision["actions"][answer]["kind"] == "pick":
+            self._cards["taken"] += 1
+        self._on_rewards = kind in ("reward", "card_reward")
+
     def _turns_per_combat(self) -> float | None:
         """The run's mean turns per combat, which grows when the policy drags fights out."""
         turns = self._combat_turns.values()
@@ -292,7 +304,8 @@ class Environment:
             self._trace[-1]["outcome_reward"] = outcome_reward
         self._finish(outcome, floor)
         info = self._info(outcome, outcome_reward)
-        info["run"] = {**self._report.as_dict(), "turns_per_combat": self._turns_per_combat()}
+        info["run"] = {**self._report.as_dict(), "turns_per_combat": self._turns_per_combat(),
+                       "card_rewards": dict(self._cards)}
         return self._obs, step_reward, terminated, not terminated, info
 
     def _finish(self, outcome: str, floor=None) -> None:
@@ -300,6 +313,7 @@ class Environment:
         runs, and a summary row for every run."""
         record = {"seed": self._seed, "outcome": outcome, "floor": floor if floor is not None else self._floor(),
                   "steps": self._steps, **self._report.as_dict(), "turns_per_combat": self._turns_per_combat(),
+                  "card_rewards": dict(self._cards),
                   "failure": self._failure, "actions": self._actions}
         failed = self._failure is not None and self._failure != "step_limit"
         if self._evaluation or failed or self._runs % self.trace_every == 0:

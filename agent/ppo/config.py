@@ -9,8 +9,9 @@ from dataclasses import asdict, dataclass, fields
 class Config:
     # A run is thousands of steps and the win comes at the end; 0.99 would see about one combat (docs/architecture.md).
     gamma: float = 0.999
-    # The usual GAE trade-off between bias and variance.
-    lam: float = 0.95
+    # High, so credit reaches back from a boss to the choices that built the deck, hundreds of decisions before; 0.95
+    # weighs about the next 20 (spec 011).
+    lam: float = 0.99
     # The usual PPO clip range.
     clip: float = 0.2
     # Constant: training length is open-ended, with resuming.

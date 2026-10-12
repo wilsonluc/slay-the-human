@@ -10,7 +10,7 @@ import torch
 from agent.checkpoint import TrainingRun
 from agent.env.vocabulary import Vocabulary
 from agent.ppo.config import Config, parse
-from agent.ppo.train import FailureBudget, Trainer
+from agent.ppo.train import FailureBudget, Trainer, by_kind
 from agent.tests.fake_env import FakeEnvironment
 
 # Columns that depend on the machine's speed, not on the seed.
@@ -32,6 +32,16 @@ def rows(run: TrainingRun) -> list[dict]:
 
 def without_timing(row: dict) -> dict:
     return {key: value for key, value in row.items() if key not in TIMING}
+
+
+class EntropyByKindTest(unittest.TestCase):
+    def test_a_rare_kind_pulls_as_much_as_a_common_one(self):
+        # 99 combat steps and one card reward: each kind's steps together get the same share of the bonus's gradient.
+        entropy = torch.cat([torch.full((99,), 1.0), torch.zeros(1)]).requires_grad_()
+        bonus = by_kind(entropy, [7] * 99 + [3])
+        self.assertAlmostEqual(float(bonus), 0.5)
+        bonus.backward()
+        self.assertAlmostEqual(float(entropy.grad[:99].sum()), float(entropy.grad[99]))
 
 
 class TrainerTest(unittest.TestCase):

@@ -2,8 +2,8 @@
 
 A step's reward is the sum of its terms, plus the outcome on the step that ends the run:
 
-- Progress (floor, kills): w * the score's rise. A floor reached for the first time, or an elite or boss killed, pays when
-  it happens and is never taken back, so a run's total grows with how far it got.
+- Progress (floor, kills, bosses): w * the score's rise. A floor reached for the first time, or an elite or boss killed,
+  pays when it happens and is never taken back, so a run's total grows with how far it got.
 - Shaping (hp, combat): w * (gamma * score(next state) - score(state)), with gamma the learner's discount. This is
   potential-based shaping: over a terminated run it adds up to minus the starting scores, so it rewards nothing by
   itself and only helps credit the actions within a fight. Its scores fall to 0 when the run is terminated (a win or a
@@ -20,23 +20,26 @@ The scores, each between 0 and 1 (a few events can push combat a little past 1):
   The fraction is over every enemy seen in the combat, so a summoned enemy adds its HP when it appears. The score only
   falls when an enemy heals or a summon arrives; winning a fight never lowers it.
 - kills: elites and bosses killed, out of 48 (the map's cap of 15 elites an act, plus one boss an act).
+- bosses: act bosses killed, out of the 3 acts.
 
 Weights: a full run's floors pay 1, the same as a win, so reaching the end is worth as much as winning there; each kill
-pays as much as a floor. The shaping terms keep their weighted scores within 0.25 each. The environment gives the
-learner each step's outcome reward and scores, so the terms can be recomputed with another discount without rewriting
-rewards.
+pays as much as a floor. Each boss killed also pays one act's share of a win (1/3): an act's boss is the wall a run
+has to pass, and as a floor and a kill alone it paid about 0.04, no more than any other floor (spec 011). The shaping
+terms keep their weighted scores within 0.25 each. The environment gives the learner each step's outcome reward and
+scores, so the terms can be recomputed with another discount without rewriting rewards.
 """
 
 import hashlib
 import json
 
 FULL_RUN = 48
-PROGRESS = {"floor": 1.0, "kills": 1.0}
+ACTS = 3
+PROGRESS = {"floor": 1.0, "kills": 1.0, "bosses": 1.0}
 SHAPING = {"hp": 0.25, "combat": 0.25}
 WEIGHTS = {**PROGRESS, **SHAPING}
 OUTCOMES = {"win": 1.0, "loss": 0.0}
 # Raised whenever a score's definition changes, so the reward hash changes with it.
-REWARD_REVISION = 2
+REWARD_REVISION = 3
 
 
 def definition_hash() -> str:
@@ -71,6 +74,7 @@ class Scores:
             "hp": run["hp"] / run["max_hp"] if run["max_hp"] else 0.0,
             "combat": (run["combats_won"] + fraction) / FULL_RUN,
             "kills": (run["elites_killed"] + run["bosses_killed"]) / FULL_RUN,
+            "bosses": run["bosses_killed"] / ACTS,
         }
 
 

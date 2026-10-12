@@ -115,9 +115,13 @@ class TrainingRun:
 
     def save(self, state: dict) -> None:
         """Writes the checkpoint to a temporary file, then replaces the last one."""
-        temporary = self.checkpoint_file.with_suffix(".tmp")
+        self.save_to(state, self.checkpoint_file)
+
+    @staticmethod
+    def save_to(state: dict, path: Path) -> None:
+        temporary = path.with_suffix(".tmp")
         torch.save(state, temporary)
-        os.replace(temporary, self.checkpoint_file)
+        os.replace(temporary, path)
 
     def load(self, vocabulary: Vocabulary) -> dict:
         """The latest checkpoint, checked against the current code, with a grown vocabulary migrated."""

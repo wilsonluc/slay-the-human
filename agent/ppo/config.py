@@ -38,6 +38,13 @@ class Config:
     # more means they cluster, and the policy would learn to seek them out.
     failure_budget: int = 5
     failure_window: int = 100
+    # Steps between evaluations on the evaluation seeds (agent/evaluate.py, best action), each making a generation:
+    # about 30,000 steps of play each, near a tenth of training's time at this interval.
+    evaluate_every: int = 250_000
+    # How many evaluation seeds a generation plays (all 200 by default; fewer for quick tests).
+    evaluation_seeds: int = 200
+    # The latest generations whose checkpoints are kept; the best is kept besides.
+    generations_kept: int = 3
     # The training run's seed; a new random one when not given, recorded either way.
     seed: int | None = None
     # Where the update trains: cpu, or cuda with a CUDA build of torch installed. The games always play on the CPU.

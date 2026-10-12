@@ -135,6 +135,14 @@ class EncodingTest(unittest.TestCase):
         with self.assertRaisesRegex(EncodingError, f"deck has {encoding.DECK + 1} entries"):
             self.encoder.encode(decision)
 
+    def test_every_potion_slot_the_game_can_give_fits(self):
+        # 3 slots to start, plus Alchemical Coffer's 4, Potion Belt's 2 and Phial Holster's 1.
+        decision = copy.deepcopy(next(d for d in recordings() if any(d["state"]["run"]["potions"])))
+        potion = next(p for p in decision["state"]["run"]["potions"] if p)
+        decision["state"]["run"]["potions"] = [dict(potion) for _ in range(10)]
+        obs, _ = self.encoder.encode(decision)
+        self.assertEqual(obs["potions_present"].sum(), 10)
+
     def test_largest_sizes_are_recorded(self):
         for decision in recordings():
             self.encoder.encode(decision)

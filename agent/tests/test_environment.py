@@ -60,8 +60,9 @@ class EnvironmentTest(unittest.TestCase):
         steps = play(env, random.Random(1))
         rewards, terminated, truncated, last = steps[-1]
         self.assertTrue(terminated and not truncated)
-        self.assertEqual((last["outcome"], last["outcome_reward"]), ("loss", -1.0))
-        self.assertEqual(set(last["run"]), {"contribution", "highest", "final"})
+        self.assertEqual((last["outcome"], last["outcome_reward"]), ("loss", 0.0))  # a loss costs nothing of its own
+        self.assertEqual(set(last["run"]), {"contribution", "highest", "final", "turns_per_combat"})
+        self.assertGreater(last["run"]["turns_per_combat"], 0, "the recordings include a combat")
         self.assertTrue(all(not t and not tr for _, t, tr, _ in steps[:-1]))
 
     def test_a_new_seed_is_drawn_and_recorded(self):
@@ -137,11 +138,11 @@ class EnvironmentTest(unittest.TestCase):
         rows = trace[:-1]
         scores = [row["scores"] for row in rows] + [reward.zero()]
         for i, (step_reward, terminated, _, info) in enumerate(steps):
-            expected = sum(reward.shaping(scores[i], scores[i + 1], gamma).values()) + info["outcome_reward"]
+            expected = sum(reward.terms(scores[i], scores[i + 1], gamma).values()) + info["outcome_reward"]
             if scores[i + 1] == scores[i] and not terminated:
                 continue  # a pick within a selection
             self.assertAlmostEqual(step_reward, expected, places=5)
-        other = sum(sum(reward.shaping(a, b, 0.5).values()) for a, b in zip(scores, scores[1:]))
+        other = sum(sum(reward.terms(a, b, 0.5).values()) for a, b in zip(scores, scores[1:]))
         self.assertIsInstance(other, float, "the same scores give the shaping for another discount")
 
     def test_records(self):

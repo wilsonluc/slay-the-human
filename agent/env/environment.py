@@ -84,6 +84,7 @@ class Environment:
         self._steps = 0
         self._failure: str | None = None
         self._scores_of = reward.Scores()
+        self._combat_turns: dict[int, int] = {}  # combats won before it -> the combat's last turn, for each combat
         try:
             self._bridge.start(self._seed, self.character, self.hang_seconds)
             message = self._bridge.next(self.hang_seconds)
@@ -135,13 +136,13 @@ class Environment:
         if message is not None and message["type"] == "run_end":
             outcome = message["outcome"]
             after = reward.zero()
-            step_reward = reward.outcome(outcome) + sum(reward.shaping(before, after, self.gamma).values())
+            step_reward = reward.outcome(outcome) + sum(reward.terms(before, after, self.gamma).values())
             self._report.add(before, after, terminated=True)
             self._scores = after
             self._in_run = False
             return self._end(before, terminated=True, outcome=outcome, outcome_reward=reward.outcome(outcome),
                              step_reward=step_reward, floor=message.get("floor"))
-        step_reward = sum(reward.shaping(before, self._scores, self.gamma).values())
+        step_reward = sum(reward.terms(before, self._scores, self.gamma).values())
         self._report.add(before, self._scores, terminated=False)
         if self._steps >= self.step_cap:
             # The game's run is still going, so the next reset launches the game again.
@@ -244,10 +245,19 @@ class Environment:
         self._obs, self._mask = self.encoder.encode(decision)
         self._legal = self.encoder.actions(decision, self.encoder.living(decision))
         self._scores = self._scores_of(decision["state"])
+        combat = decision["state"].get("combat")
+        if combat:
+            started = decision["state"]["run"]["combats_won"]
+            self._combat_turns[started] = max(self._combat_turns.get(started, 0), combat["turn"])
         for name, size in self.encoder.largest.items():
             if size > self._largest.get(name, -1):
                 self._largest[name] = size
                 log.info("%s: largest %s so far: %d", self.name, name, size)
+
+    def _turns_per_combat(self) -> float | None:
+        """The run's mean turns per combat, which grows when the policy drags fights out."""
+        turns = self._combat_turns.values()
+        return sum(turns) / len(turns) if turns else None
 
     def _floor(self):
         return self._decision["state"]["run"]["floor"]
@@ -271,14 +281,15 @@ class Environment:
             self._trace[-1]["outcome_reward"] = outcome_reward
         self._finish(outcome, floor)
         info = self._info(outcome, outcome_reward)
-        info["run"] = self._report.as_dict()
+        info["run"] = {**self._report.as_dict(), "turns_per_combat": self._turns_per_combat()}
         return self._obs, step_reward, terminated, not terminated, info
 
     def _finish(self, outcome: str, floor=None) -> None:
         """Writes the run's record: a full trace for evaluation runs, failed runs and one in trace_every training
         runs, and a summary row for every run."""
         record = {"seed": self._seed, "outcome": outcome, "floor": floor if floor is not None else self._floor(),
-                  "steps": self._steps, **self._report.as_dict(), "failure": self._failure, "actions": self._actions}
+                  "steps": self._steps, **self._report.as_dict(), "turns_per_combat": self._turns_per_combat(),
+                  "failure": self._failure, "actions": self._actions}
         failed = self._failure is not None and self._failure != "step_limit"
         if self._evaluation or failed or self._runs % self.trace_every == 0:
             path = self.out / f"{self.name}-run-{self._runs}.trace.jsonl"

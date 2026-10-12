@@ -94,6 +94,8 @@ def game_metrics(ended: list[dict], buffer: Buffer) -> dict:
         "mean_act": mean([run["act"] for run in finished]),
         "mean_steps_per_run": mean([run["steps"] for run in finished]),
         "mean_return": mean([run["return"] for run in finished]),
+        "turns_per_combat": mean([run["run"]["turns_per_combat"] for run in finished
+                                  if run["run"] and run["run"].get("turns_per_combat") is not None]),
         "legal_actions": float(buffer.mask.sum(-1).mean()),
         "failed_runs": sum(failed(run) for run in ended),
     }

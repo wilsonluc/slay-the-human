@@ -6,7 +6,7 @@ Where the project is going, in phases. A phase is a result the agent reaches, ch
 
 | Phase | Goal | Done when | Needs |
 |---|---|---|---|
-| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-008 (done: every decision goes to the agent; the training environment; PPO); a reward that pays for progress (009); evaluation and checkpoints; a results dashboard comparing generations (React and MUI X, hosted on GitHub Pages) |
+| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-009 (done: every decision goes to the agent; the training environment; PPO; a reward that pays for progress); evaluation and checkpoints; a results dashboard comparing generations (React and MUI X, hosted on GitHub Pages) |
 | 1.0 | Ironclad, ascension 0 | Evaluation win rate ≥ target | Phase 0 |
 | 1.1 - 1.10 | Ironclad, ascension 1 to 10 | Evaluation win rate ≥ target, per level | Ascension support |
 | 2 | Decided at the end of phase 1 | Recorded below as a decision | |

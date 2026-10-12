@@ -60,7 +60,7 @@ class CheckpointTest(unittest.TestCase):
     def test_a_checkpoint_from_other_code_is_refused_naming_each_difference(self):
         trainer = self.trainer(small(total_steps=200))
         trainer.train()
-        with mock.patch.object(reward, "WEIGHTS", {**reward.WEIGHTS, "hp": 0.5}), \
+        with mock.patch.object(reward, "SHAPING", {**reward.SHAPING, "hp": 0.5}), \
                 mock.patch.object(encoding, "SCHEMA_REVISION", encoding.SCHEMA_REVISION + 1):
             with self.assertRaises(CheckpointMismatch) as refused:
                 trainer.run.load(self.vocabulary)

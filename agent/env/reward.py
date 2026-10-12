@@ -1,11 +1,16 @@
 """The reward, defined once.
 
-A step's reward is the outcome plus shaping:
+A step's reward is the sum of its terms, plus the outcome on the step that ends the run:
 
-- Outcome: +1 for a win and -1 for a loss, on the step that ends the run.
-- Shaping: for each term, w * (gamma * score(next state) - score(state)), with gamma the learner's discount. This is
-  potential-based shaping, which never changes which policy is best. Every score falls to 0 when the run is terminated
-  (a win or a loss), but not when it is truncated (a failure or the step limit), where the learner bootstraps instead.
+- Progress (floor, kills): w * the score's rise. A floor reached for the first time, or an elite or boss killed, pays when
+  it happens and is never taken back, so a run's total grows with how far it got.
+- Shaping (hp, combat): w * (gamma * score(next state) - score(state)), with gamma the learner's discount. This is
+  potential-based shaping: over a terminated run it adds up to minus the starting scores, so it rewards nothing by
+  itself and only helps credit the actions within a fight. Its scores fall to 0 when the run is terminated (a win or a
+  loss), but not when it is truncated (a failure or the step limit), where the learner bootstraps instead.
+- Outcome: a win adds WIN. A loss costs nothing of its own: dying is bad because it ends the progress that would have
+  followed, so nothing is gained by putting it off. (A loss penalty would be discounted, so a loss later in steps would
+  cost less, and dragging fights out would pay.)
 
 The scores, each between 0 and 1 (a few events can push combat a little past 1):
 
@@ -16,24 +21,29 @@ The scores, each between 0 and 1 (a few events can push combat a little past 1):
   falls when an enemy heals or a summon arrives; winning a fight never lowers it.
 - kills: elites and bosses killed, out of 48 (the map's cap of 15 elites an act, plus one boss an act).
 
-Each term's weight keeps its weighted score within 1, so the return needs no scaling. The environment gives the learner
-each step's outcome reward and scores, so shaping can be recomputed with another discount without rewriting rewards.
+Weights: a full run's floors pay 1, the same as a win, so reaching the end is worth as much as winning there; each kill
+pays as much as a floor. The shaping terms keep their weighted scores within 0.25 each. The environment gives the
+learner each step's outcome reward and scores, so the terms can be recomputed with another discount without rewriting
+rewards.
 """
 
 import hashlib
 import json
 
 FULL_RUN = 48
-WEIGHTS = {"floor": 0.25, "hp": 0.25, "combat": 0.25, "kills": 0.25}
-OUTCOMES = {"win": 1.0, "loss": -1.0}
+PROGRESS = {"floor": 1.0, "kills": 1.0}
+SHAPING = {"hp": 0.25, "combat": 0.25}
+WEIGHTS = {**PROGRESS, **SHAPING}
+OUTCOMES = {"win": 1.0, "loss": 0.0}
 # Raised whenever a score's definition changes, so the reward hash changes with it.
-REWARD_REVISION = 1
+REWARD_REVISION = 2
 
 
 def definition_hash() -> str:
     """SHA-256 of the reward's weights, outcomes, run length and revision: a checkpoint trained on another reward
     refuses to load."""
-    definition = {"weights": WEIGHTS, "outcomes": OUTCOMES, "full_run": FULL_RUN, "revision": REWARD_REVISION}
+    definition = {"progress": PROGRESS, "shaping": SHAPING, "outcomes": OUTCOMES, "full_run": FULL_RUN,
+                  "revision": REWARD_REVISION}
     return hashlib.sha256(json.dumps(definition, sort_keys=True).encode()).hexdigest()
 
 
@@ -69,29 +79,31 @@ def zero() -> dict[str, float]:
     return dict.fromkeys(WEIGHTS, 0.0)
 
 
-def shaping(before: dict[str, float], after: dict[str, float], gamma: float,
-            weights: dict[str, float] = WEIGHTS) -> dict[str, float]:
-    """Each term's shaping reward for one step."""
-    return {term: weight * (gamma * after[term] - before[term]) for term, weight in weights.items()}
+def terms(before: dict[str, float], after: dict[str, float], gamma: float) -> dict[str, float]:
+    """Each term's reward for one step. After a terminated run, after is zero(): progress terms then pay nothing (they
+    never go down), and shaping terms fall to their final potential of 0."""
+    rewards = {term: weight * max(after[term] - before[term], 0.0) for term, weight in PROGRESS.items()}
+    rewards.update({term: weight * (gamma * after[term] - before[term]) for term, weight in SHAPING.items()})
+    return rewards
 
 
 def outcome(result: str | None) -> float:
-    """The outcome reward: +1 for a win, -1 for a loss, 0 for a step that does not end the run in the game."""
+    """The outcome reward: WIN for a win, 0 for a loss and for a step that does not end the run in the game."""
     return OUTCOMES.get(result, 0.0)
 
 
 class RunReport:
     """Per run, each term's discounted contribution, highest score and score just before the run ended."""
 
-    def __init__(self, gamma: float, first: dict[str, float], weights: dict[str, float] = WEIGHTS) -> None:
-        self._gamma, self._weights = gamma, weights
+    def __init__(self, gamma: float, first: dict[str, float]) -> None:
+        self._gamma = gamma
         self._discount = 1.0
-        self.contribution = dict.fromkeys(weights, 0.0)
+        self.contribution = dict.fromkeys(WEIGHTS, 0.0)
         self.highest = dict(first)
         self.final = dict(first)
 
     def add(self, before: dict[str, float], after: dict[str, float], terminated: bool) -> None:
-        for term, value in shaping(before, after, self._gamma, self._weights).items():
+        for term, value in terms(before, after, self._gamma).items():
             self.contribution[term] += self._discount * value
         self._discount *= self._gamma
         if not terminated:

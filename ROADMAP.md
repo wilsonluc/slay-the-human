@@ -6,7 +6,7 @@ Where the project is going, in phases. A phase is a result the agent reaches, ch
 
 | Phase | Goal | Done when | Needs |
 |---|---|---|---|
-| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-009 (done: every decision goes to the agent; the training environment; PPO; a reward that pays for progress); evaluation and checkpoints; a results dashboard comparing generations (React and MUI X, hosted on GitHub Pages) |
+| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-010 (done: every decision goes to the agent; the training environment; PPO; a reward that pays for progress; evaluation and generations); a results dashboard comparing generations (011) |
 | 1.0 | Ironclad, ascension 0 | Evaluation win rate ≥ target | Phase 0 |
 | 1.1 - 1.10 | Ironclad, ascension 1 to 10 | Evaluation win rate ≥ target, per level | Ascension support |
 | 2 | Decided at the end of phase 1 | Recorded below as a decision | |
@@ -42,3 +42,4 @@ Finished phases and decisions, newest first.
 
 | Date | Phase | Result | Record |
 |---|---|---|---|
+| 2026-10-12 | 0 | Passed. Generation at update 245 (250,880 steps): best-action mean floor 15.26 on the 200 evaluation seeds, against a target of 10.36 (the random agent's 5.18, doubled); 2 of 200 runs failed (game crashes), 0 wins, 3.5% past the act 1 boss. | Training run `runs/20261012-122156` (seed 2030, 4 games, default config; checkpoint kept as `phase-0.pt`, result `generations/update-245.json`), commit `bd625ec`, game build 23811903, evaluation seeds hash `c54712d653a9`. |

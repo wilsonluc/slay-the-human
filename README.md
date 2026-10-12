@@ -67,6 +67,12 @@ python -m agent.ppo.train --resume runs/<time>
 - `--resume` continues from the latest checkpoint with the same settings, losing at most the steps since it. A checkpoint made by code with another vocabulary, observation schema, protocol or reward refuses to load and names the difference; a vocabulary that only grew loads, with new embedding rows.
 - Training runs on the CPU by default. `--device cuda` uses a GPU once a CUDA build of torch is installed (see pytorch.org for the command matching your GPU).
 
+## Evaluation
+
+`python -m agent.evaluate <checkpoint.pt>` plays a checkpoint on the 200 evaluation seeds (`agent/env/evaluation_seeds.json`), which training never plays: once with its best action, the official result, and once sampling. `python -m agent.evaluate random` plays the random agent on them; its result is `docs/baselines/random.json`. Each result, in `runs/eval-<time>/result.json`, has every seed's outcome, floor and act, the mean floor, win rate and share of runs past each act's boss, and what was measured (checkpoint, seeds, game build, commit, hashes). `--seeds N` plays the first N seeds, `--modes best` skips sampling.
+
+Training makes a generation every `--evaluate-every` steps (default 250,000): it evaluates its policy with the best action, saves the checkpoint and result in `runs/<time>/generations/`, adds a row to `generations.csv`, and keeps the best generation and the latest `--generations-kept`.
+
 Run the agent's tests with `python -m unittest discover -s agent/tests -t .`, and the tools' with `sh tools/test.sh`. CI (`.github/workflows/tests.yml`) runs both on every pull request and push to `main`. Building the mod and every check in the real game need the game's files, so they stay manual.
 
 ## Layout

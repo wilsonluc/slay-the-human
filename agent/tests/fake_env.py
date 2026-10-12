@@ -35,6 +35,8 @@ class FakeEnvironment:
     def reset(self, seed: str | None = None, options: dict | None = None) -> tuple[dict, dict]:
         self._episodes += 1
         self._seed = seed or f"FAKE{self._rng.randrange(10**6):06d}"
+        # A given seed fixes the episode, as a game seed fixes a run; otherwise the environment's generator does.
+        self._episode = random.Random(seed) if seed else self._rng
         self._step, self._good = 0, 0
         self._decide()
         return self._obs, self._info(None)
@@ -74,7 +76,7 @@ class FakeEnvironment:
         obs["global"][1] = self._good / CHOICES  # what a player can see so far, as in the real observation
         mask = np.zeros(encoding.ACTION_COUNT, bool)
         if self._step % CHOICE_EVERY == 0:
-            slots = self._rng.sample(range(encoding.OPTIONS), 2)
+            slots = self._episode.sample(range(encoding.OPTIONS), 2)
             for slot in slots:
                 obs["options_present"][slot] = 1
                 obs["options"][slot, 3] = 1

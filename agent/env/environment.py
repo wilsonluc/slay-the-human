@@ -27,6 +27,7 @@ import numpy as np
 from agent.bridge import Bridge, BridgeError
 from agent.env import games, reward
 from agent.env.encoding import Encoder, EncodingError, describe
+from agent.env.seeds import EVALUATION as EVALUATION_SEEDS
 from agent.env.vocabulary import Vocabulary
 
 SEED_CHARACTERS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
@@ -74,11 +75,14 @@ class Environment:
 
     def reset(self, seed: str | None = None, options: dict | None = None) -> tuple[dict, dict]:
         options = options or {}
+        evaluation = bool(options.get("evaluation"))
+        if seed and canonical_seed(seed) in EVALUATION_SEEDS and not evaluation:
+            raise ValueError(f"{canonical_seed(seed)} is an evaluation seed; training never plays one")
         if self._in_run or self._game is None or self._game.poll() is not None:
             self._relaunch()
         self._runs += 1
-        self._seed = canonical_seed(seed) if seed else "".join(self._rng.choice(SEED_CHARACTERS) for _ in range(10))
-        self._evaluation = bool(options.get("evaluation"))
+        self._seed = canonical_seed(seed) if seed else self._draw_seed()
+        self._evaluation = evaluation
         self._trace: list[dict] = []
         self._actions: list[int] = []
         self._steps = 0
@@ -150,6 +154,13 @@ class Environment:
             return self._end(before, terminated=False, outcome="step_limit", outcome_reward=0.0,
                              step_reward=step_reward)
         return self._obs, step_reward, False, False, self._info(None)
+
+    def _draw_seed(self) -> str:
+        """A training run's game seed: random, and never an evaluation seed."""
+        while True:
+            seed = "".join(self._rng.choice(SEED_CHARACTERS) for _ in range(10))
+            if seed not in EVALUATION_SEEDS:
+                return seed
 
     def action_masks(self) -> np.ndarray:
         return self._mask

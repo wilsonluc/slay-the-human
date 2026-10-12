@@ -105,6 +105,20 @@ class TrainerTest(unittest.TestCase):
         trainer.train()
         self.assertEqual(rows(trainer.run)[-1]["failed_runs"], "0")
 
+    def test_generations_are_evaluated_kept_and_pruned(self):
+        trainer = self.trainer(small(total_steps=800, evaluate_every=200, evaluation_seeds=2, generations_kept=1))
+        trainer.train()
+        folder = trainer.run.folder
+        with (folder / "generations.csv").open(encoding="utf-8") as file:
+            generations = list(csv.DictReader(file))
+        self.assertEqual([int(g["update"]) for g in generations], [1, 2, 3, 4])
+        self.assertTrue(all(g["runs"] == "2" for g in generations))
+        self.assertEqual(len(list((folder / "generations").glob("*.json"))), 4, "every result stays")
+        kept = {p.name for p in (folder / "generations").glob("*.pt")}
+        best = max(generations, key=lambda g: (g["valid"] == "True", float(g["win_rate"]), float(g["mean_floor"])))
+        self.assertEqual(kept, {"update-4.pt", best["file"]})
+        self.assertEqual(trainer.run.load(self.vocabulary)["evaluated"], 800)
+
     def test_every_setting_is_a_flag(self):
         config, resume = parse(["--gamma", "0.99", "--games", "8", "--seed", "3", "--resume", "runs/x"])
         self.assertEqual((config.gamma, config.games, config.seed, resume), (0.99, 8, 3, "runs/x"))

@@ -5,6 +5,7 @@ import random
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import numpy as np
@@ -93,6 +94,24 @@ class EnvironmentTest(unittest.TestCase):
         with self.assertLogs("agent.env.environment", "ERROR"):
             steps = play(env, random.Random(4))
         self.assertIn("told to quit", steps[-1][3]["outcome"])
+
+    def test_training_never_plays_an_evaluation_seed(self):
+        from agent.env.seeds import evaluation_seeds
+        env = self.env()
+        with self.assertRaises(ValueError):
+            env.reset(seed=evaluation_seeds()[0])
+        obs, info = env.reset(seed=evaluation_seeds()[0], options={"evaluation": True})
+        self.assertEqual(info["seed"], evaluation_seeds()[0])
+
+    def test_drawn_seeds_avoid_the_evaluation_seeds(self):
+        from agent.env import environment as module
+        env = self.env()
+        # The seed the environment would draw next, made an evaluation seed.
+        rng = random.Random()
+        rng.setstate(env._rng.getstate())
+        clash = "".join(rng.choice(module.SEED_CHARACTERS) for _ in range(10))
+        with mock.patch.object(module, "EVALUATION_SEEDS", frozenset({clash})):
+            self.assertNotEqual(env._draw_seed(), clash)
 
     def test_a_decision_too_big_for_the_observation_is_truncated_and_training_goes_on(self):
         env = self.env(mode="overflow")

@@ -42,6 +42,7 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 - **Checkpoint**: the saved policy weights at one point in training, with the record of what produced them.
 - **Generation**: a checkpoint that was evaluated. The dashboard compares generations on the same evaluation seeds.
 - **Evaluation**: measuring a checkpoint's win rate on a fixed set of evaluation seeds that training never uses, with the agent choosing its best action.
+- **Evaluation seeds**: the 200 game seeds of `agent/env/evaluation_seeds.json`, identified by their hash; training refuses them.
 - **Baseline**: an evaluation of a reference agent (random, then the first agent that wins reliably) that a phase's target is set from.
 
 ## Roadmap

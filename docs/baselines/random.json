@@ -1,0 +1,1630 @@
+{
+ "checkpoint": "random",
+ "seeds": {
+  "count": 200,
+  "hash": "c54712d653a9cdb6b85581aaad5b2f7360a93f739d27416f4f7038cbfb823be5",
+  "all": true
+ },
+ "game_build": "23811903",
+ "game_version": "v0.107.1",
+ "git_commit": "fbf243c5c5894bafdcd072f4053f969a04acc393",
+ "vocabulary": "eb6f2361e0c56b9ed65f304da80a533e87323a7d692154d253fedc2f82199e44",
+ "schema": "fe9c9950a9f82b76ff52d9e0fe599aad17fe028802bef9697edb679046fd2b38",
+ "protocol": 4,
+ "reward": "9e431d1b6d2657318daf6d2c5c67976b056dc392a174e1b4f191aa84975c5cf5",
+ "time": "2026-10-12T12:21:27",
+ "summary": {
+  "random": {
+   "runs": 200,
+   "failed": 0,
+   "mean_floor": 5.18,
+   "win_rate": 0.0,
+   "act1_boss": 0.0,
+   "act2_boss": 0.0,
+   "act3_boss": 0.0,
+   "valid": true
+  }
+ },
+ "runs": [
+  {
+   "seed": "J2DZHSS9GV",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "FKTV0273KV",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 48
+  },
+  {
+   "seed": "W7RNBGJ8D8",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 71
+  },
+  {
+   "seed": "2Z2CRVGA5S",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 67
+  },
+  {
+   "seed": "1EQLFCCWZK",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 76
+  },
+  {
+   "seed": "T11B6UF4PG",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 18
+  },
+  {
+   "seed": "XGLKAK81CN",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "4KKZVUYJNM",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 49
+  },
+  {
+   "seed": "M6GWAZE9PT",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 80
+  },
+  {
+   "seed": "WQTTR3YMLQ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 53
+  },
+  {
+   "seed": "QY5MDMWKDQ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 83
+  },
+  {
+   "seed": "4M5NMQASE4",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 53
+  },
+  {
+   "seed": "XKFZTW41ME",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 49
+  },
+  {
+   "seed": "N2HCCWNYMR",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 54
+  },
+  {
+   "seed": "GLNHDDS5QW",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 40
+  },
+  {
+   "seed": "SQMQBZ30K8",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "UY1KLFNQVS",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 55
+  },
+  {
+   "seed": "T6YU2N2ZW2",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 31
+  },
+  {
+   "seed": "YNU4KUJSZ8",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 67
+  },
+  {
+   "seed": "T2Z41J5R5U",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 70
+  },
+  {
+   "seed": "83HJX3RF72",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 34
+  },
+  {
+   "seed": "2ZHRG99WCC",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 50
+  },
+  {
+   "seed": "M866P18UP9",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 70
+  },
+  {
+   "seed": "EBTCYF47S5",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 43
+  },
+  {
+   "seed": "SC6QC3HV78",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 66
+  },
+  {
+   "seed": "FH3TKERRV7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 57
+  },
+  {
+   "seed": "50P0PP0MEM",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 41
+  },
+  {
+   "seed": "3Z5E69EPJ8",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "KZ68A40F78",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "41WMXNMK4N",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 18
+  },
+  {
+   "seed": "X7WMT725PZ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 79
+  },
+  {
+   "seed": "JD8XGXTAUH",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 50
+  },
+  {
+   "seed": "HLLHQVJ8V5",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 45
+  },
+  {
+   "seed": "3Q9PN4MB5T",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "7K79KTEDT4",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 15
+  },
+  {
+   "seed": "R6ZC189G32",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 76
+  },
+  {
+   "seed": "T9AMX7XLXF",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 81
+  },
+  {
+   "seed": "8EXF13TFB3",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 50
+  },
+  {
+   "seed": "HS247GSD09",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 62
+  },
+  {
+   "seed": "YY9A8YDKUU",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 63
+  },
+  {
+   "seed": "6C2SDGDAP3",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 54
+  },
+  {
+   "seed": "QJP51DTYGA",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "JBLUZBZP55",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 48
+  },
+  {
+   "seed": "60YUHL21Y4",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "QU89JNVVLC",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 23
+  },
+  {
+   "seed": "8L2CQMKYWV",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 52
+  },
+  {
+   "seed": "ALBB5SNF2E",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "ZV658Y1V4X",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 56
+  },
+  {
+   "seed": "3LPPKFWXD6",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "MRCAEKYBCT",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 48
+  },
+  {
+   "seed": "0DQC01YR4P",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "CK73E3T61U",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 33
+  },
+  {
+   "seed": "QQQBPZHUZL",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 62
+  },
+  {
+   "seed": "XWCV88T7ZX",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 77
+  },
+  {
+   "seed": "TVMEPXJFPG",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 53
+  },
+  {
+   "seed": "PFYHMPZNK8",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 65
+  },
+  {
+   "seed": "WXN1AS905Q",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 55
+  },
+  {
+   "seed": "F4B22K8NM1",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 59
+  },
+  {
+   "seed": "R5E6AA7HY9",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 50
+  },
+  {
+   "seed": "M5J2K6EWA9",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "XLPRNPKRT3",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 11,
+   "act": 1,
+   "steps": 88
+  },
+  {
+   "seed": "LNK6G8083Q",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 67
+  },
+  {
+   "seed": "BSJ7D93L9M",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 54
+  },
+  {
+   "seed": "LAV4H3EYC8",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "KT2RSY63UL",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "MPF2CKAF4Z",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 69
+  },
+  {
+   "seed": "P70K6ND6F7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 54
+  },
+  {
+   "seed": "Y80ATRPE9K",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 42
+  },
+  {
+   "seed": "RG3V2ZTWDK",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "XFLHN707CP",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "WSF9S1NJFJ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 12,
+   "act": 1,
+   "steps": 97
+  },
+  {
+   "seed": "78Z36H7N09",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 32
+  },
+  {
+   "seed": "MW69Z9L8ED",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "79X8JXUP1G",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 46
+  },
+  {
+   "seed": "EBQQ0R9C8J",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 87
+  },
+  {
+   "seed": "A09HYT26UF",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 72
+  },
+  {
+   "seed": "0R38HWVQRP",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 38
+  },
+  {
+   "seed": "9L042KUJNZ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 51
+  },
+  {
+   "seed": "W32VYUFL7P",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 79
+  },
+  {
+   "seed": "TWQ8E7WR5B",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 59
+  },
+  {
+   "seed": "CGRVUENBTS",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 62
+  },
+  {
+   "seed": "QUGJMECR75",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "DJRAVAMLCP",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 61
+  },
+  {
+   "seed": "N6JCFVWPSK",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 33
+  },
+  {
+   "seed": "B4ZEDS1VKC",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 74
+  },
+  {
+   "seed": "YYDFZ1WF2R",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 43
+  },
+  {
+   "seed": "01PZG70CP7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 46
+  },
+  {
+   "seed": "GPZVGTYGLH",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 49
+  },
+  {
+   "seed": "ADTBAL0GFP",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 65
+  },
+  {
+   "seed": "WH0DJRKD8D",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 42
+  },
+  {
+   "seed": "M5ML5LH9ZW",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 61
+  },
+  {
+   "seed": "7G4SLFNTYT",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 42
+  },
+  {
+   "seed": "20J0H08KFJ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "QVK13JFJ8Z",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 62
+  },
+  {
+   "seed": "WX2MQXHD9T",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 69
+  },
+  {
+   "seed": "YXCSDMXE0Y",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 38
+  },
+  {
+   "seed": "PM35SMAQ0Z",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 11,
+   "act": 1,
+   "steps": 98
+  },
+  {
+   "seed": "K2ZSPNGGND",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 45
+  },
+  {
+   "seed": "CMVFV57W34",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "M7FWJ3H2P4",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 53
+  },
+  {
+   "seed": "S2U6YTKQ82",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 36
+  },
+  {
+   "seed": "RW7L7E2CHH",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "A21NXTHSDX",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 35
+  },
+  {
+   "seed": "9V55FP8FDP",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 50
+  },
+  {
+   "seed": "MQUKUPCX0C",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 46
+  },
+  {
+   "seed": "2VP2EXFNS2",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 54
+  },
+  {
+   "seed": "Q4VG8JP4SW",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 45
+  },
+  {
+   "seed": "LDA76RG5MR",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 96
+  },
+  {
+   "seed": "FQE3YK84SM",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 53
+  },
+  {
+   "seed": "QDXMKUV34J",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 45
+  },
+  {
+   "seed": "JUJKQQBF82",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 29
+  },
+  {
+   "seed": "KL1E18XT4S",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 34
+  },
+  {
+   "seed": "Q8BTC6GQNU",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 11,
+   "act": 1,
+   "steps": 100
+  },
+  {
+   "seed": "9F3M6Q72EB",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 43
+  },
+  {
+   "seed": "DP7YJ4DXRJ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 39
+  },
+  {
+   "seed": "42BZD8FR4D",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "6C6PV3UCCP",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 43
+  },
+  {
+   "seed": "DBV1HEUFR0",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 38
+  },
+  {
+   "seed": "9JV2VA8SPX",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 43
+  },
+  {
+   "seed": "FYHX5P5ALN",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 26
+  },
+  {
+   "seed": "PQVENU3ZD2",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "2MBSXVNJLW",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 67
+  },
+  {
+   "seed": "K1GQ040YJG",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 57
+  },
+  {
+   "seed": "5VM6YCUXTD",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 41
+  },
+  {
+   "seed": "F2QAY9REQ7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 40
+  },
+  {
+   "seed": "0QNB10SBL6",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 57
+  },
+  {
+   "seed": "JRVYN7HLRU",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 49
+  },
+  {
+   "seed": "WJ6R3WTN7V",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 43
+  },
+  {
+   "seed": "97175JLGGL",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "2QJ30T2GLC",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 65
+  },
+  {
+   "seed": "RFH4DBHMS4",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 55
+  },
+  {
+   "seed": "NYV1QXU3MT",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 67
+  },
+  {
+   "seed": "0B0AX9PKRL",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 17
+  },
+  {
+   "seed": "XCR63RR5NM",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 25
+  },
+  {
+   "seed": "NQ5PZ98PV0",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 69
+  },
+  {
+   "seed": "PU4R5W9VEL",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 59
+  },
+  {
+   "seed": "Z3FTV1QWRH",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 34
+  },
+  {
+   "seed": "FHFWMG14VV",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "DMNN7DL0T6",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 71
+  },
+  {
+   "seed": "BSFVZV2HYA",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "4R941XVB78",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "RUWFQSDGUY",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 44
+  },
+  {
+   "seed": "L4XMGN04FX",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 35
+  },
+  {
+   "seed": "AU075SGS1T",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "NXQRY3WYSK",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 45
+  },
+  {
+   "seed": "NU2B337NLC",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "25VKZLM2YG",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 80
+  },
+  {
+   "seed": "SXGX4RXP3Q",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 73
+  },
+  {
+   "seed": "HRYTMRS3LF",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 65
+  },
+  {
+   "seed": "JLRFJYFZS9",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 55
+  },
+  {
+   "seed": "J5580J4TX6",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 72
+  },
+  {
+   "seed": "6HUG72NB3D",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "WXTMT9EL2F",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 59
+  },
+  {
+   "seed": "EXJS9XQBP2",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 36
+  },
+  {
+   "seed": "VX6QNQ68B7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 92
+  },
+  {
+   "seed": "8G8Z7GAM3H",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 71
+  },
+  {
+   "seed": "RUXDFDZA6M",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 88
+  },
+  {
+   "seed": "F55QJFAJ4A",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 11,
+   "act": 1,
+   "steps": 93
+  },
+  {
+   "seed": "QUFAV4M7MZ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "XEU9Q6YEWS",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 46
+  },
+  {
+   "seed": "TL13E3WU92",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 52
+  },
+  {
+   "seed": "D51JZ0PAB7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 62
+  },
+  {
+   "seed": "D8AZDM5133",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 79
+  },
+  {
+   "seed": "QLKAYLZ6R9",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 55
+  },
+  {
+   "seed": "LMMF0B1WJ9",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 54
+  },
+  {
+   "seed": "MCEAZ88NKE",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 35
+  },
+  {
+   "seed": "M3SJVP0R3R",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 45
+  },
+  {
+   "seed": "2YX6RT4Y0Y",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 12,
+   "act": 1,
+   "steps": 96
+  },
+  {
+   "seed": "DPK0RS08YG",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 44
+  },
+  {
+   "seed": "C3Y04TKA0H",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 49
+  },
+  {
+   "seed": "1UZLJ850YD",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 33
+  },
+  {
+   "seed": "75WG6VPD3E",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 72
+  },
+  {
+   "seed": "YZ5MZ1D7V7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 56
+  },
+  {
+   "seed": "MNA9DX8GFA",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 2,
+   "act": 1,
+   "steps": 26
+  },
+  {
+   "seed": "75ULWMA4SU",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 65
+  },
+  {
+   "seed": "PDUXQJLVJS",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 61
+  },
+  {
+   "seed": "UP13ANCPEB",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 90
+  },
+  {
+   "seed": "1R0JD70KMB",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 43
+  },
+  {
+   "seed": "C8DS9E84AL",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 37
+  },
+  {
+   "seed": "DCXA0BWKBU",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 57
+  },
+  {
+   "seed": "BRH7YMT8PY",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 44
+  },
+  {
+   "seed": "7KQ6C5X25N",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 47
+  },
+  {
+   "seed": "XZ3K3CBZKJ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 8,
+   "act": 1,
+   "steps": 66
+  },
+  {
+   "seed": "99TH3RQEZ6",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 64
+  },
+  {
+   "seed": "Z57ZHMFJCZ",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 9,
+   "act": 1,
+   "steps": 77
+  },
+  {
+   "seed": "REE6TRSK5V",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 54
+  },
+  {
+   "seed": "MWT17T9D8Z",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 7,
+   "act": 1,
+   "steps": 33
+  },
+  {
+   "seed": "MU1CPHGWN3",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "Y3GT2R94WF",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 56
+  },
+  {
+   "seed": "GDD59X7MV7",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 26
+  },
+  {
+   "seed": "5DS75HDV0P",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 6,
+   "act": 1,
+   "steps": 60
+  },
+  {
+   "seed": "AAG76ZRVNS",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 57
+  },
+  {
+   "seed": "8JYFSSDW26",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 58
+  },
+  {
+   "seed": "DP74Z4WKUM",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 36
+  },
+  {
+   "seed": "EK69K18985",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 39
+  },
+  {
+   "seed": "BP0RXEDJWT",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 65
+  },
+  {
+   "seed": "ZAZ7RJ64FU",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 11,
+   "act": 1,
+   "steps": 94
+  },
+  {
+   "seed": "89WJ0RXB47",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 4,
+   "act": 1,
+   "steps": 28
+  },
+  {
+   "seed": "FHZKPG1P1B",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 3,
+   "act": 1,
+   "steps": 37
+  },
+  {
+   "seed": "WKSQ5NRYTH",
+   "mode": "random",
+   "outcome": "loss",
+   "floor": 5,
+   "act": 1,
+   "steps": 55
+  }
+ ]
+}

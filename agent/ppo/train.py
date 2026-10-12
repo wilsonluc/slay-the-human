@@ -10,7 +10,11 @@ too many recent runs failed (the failure budget), on an interrupt, or on an erro
 
 import collections
 import copy
+import csv
+import io
+import json
 import logging
+import os
 import random
 import sys
 import time
@@ -18,7 +22,9 @@ import time
 import numpy as np
 import torch
 
+from agent import evaluate
 from agent.checkpoint import TrainingRun, identities
+from agent.env.seeds import evaluation_seeds
 from agent.env import encoding, reward
 from agent.env.environment import make_environments
 from agent.env.vocabulary import Vocabulary
@@ -124,6 +130,7 @@ class Trainer:
         self.buffer = Buffer(config.steps, len(envs))
         self.kinds = {vocabulary.index("KIND", kind): kind for kind in encoding.KINDS}
         self.updates = self.steps = 0
+        self.evaluated = 0  # the step of the last generation
         # The most recent runs: a failed run's outcome, else None.
         self.window: collections.deque = collections.deque(maxlen=config.failure_window)
         self._snapshot: dict | None = None
@@ -137,7 +144,7 @@ class Trainer:
             "updates": self.updates, "steps": self.steps,
             "torch_rng": torch.get_rng_state(), "sampling_rng": [g.get_state() for g in self.collector.generators],
             "minibatch_rng": self.rng.bit_generator.state, "game_seed_rng": [env.rng_state() for env in self.envs],
-            "window": list(self.window), "vocabulary_keys": list(self.vocabulary.keys),
+            "window": list(self.window), "evaluated": self.evaluated, "vocabulary_keys": list(self.vocabulary.keys),
             "identities": identities(self.vocabulary),
         }
 
@@ -154,6 +161,7 @@ class Trainer:
         for env, saved in zip(self.envs, state["game_seed_rng"]):
             env.set_rng_state(saved)
         self.window.extend(state["window"])
+        self.evaluated = state.get("evaluated", 0)
         self._snapshot = copy.deepcopy(self.state())
 
     # The loop
@@ -166,6 +174,8 @@ class Trainer:
         try:
             while self.steps < self.config.total_steps:
                 self._one_update()
+                if self.steps // self.config.evaluate_every > self.evaluated // self.config.evaluate_every:
+                    self._generation()
                 if self.updates % self.config.checkpoint_every == 0:
                     self.run.save(self._snapshot)
             reason = "step budget"
@@ -207,6 +217,65 @@ class Trainer:
             reasons = collections.Counter(failures).most_common(3)
             raise FailureBudget(f"{len(failures)} of the last {len(self.window)} runs failed, past the budget of "
                                 f"{self.config.failure_budget}; most common reasons: {reasons}")
+
+
+    def _generation(self) -> None:
+        """Evaluates the policy on the evaluation seeds with its best action and keeps it as a generation. The games'
+        runs in progress are ended (their next reset launches them again); collection then starts fresh runs."""
+        began = time.monotonic()
+        folder = self.run.folder / "generations"
+        folder.mkdir(exist_ok=True)
+        name = f"update-{self.updates}"
+        about = {"checkpoint": str(folder / f"{name}.pt"), "training_run": self.run.folder.name,
+                 "update": self.updates, "step": self.steps}
+        result = evaluate.evaluate(self.envs, self.player, ["best"], self.vocabulary,
+                                   evaluation_seeds()[:self.config.evaluation_seeds], about)
+        self.collector.obs = [None] * len(self.envs)
+        seconds = time.monotonic() - began
+        self.run.save_to(self._snapshot, folder / f"{name}.pt")
+        (folder / f"{name}.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+        best = result["summary"]["best"]
+        row = {"update": self.updates, "step": self.steps, "time": round(time.time(), 1),
+               **{key: best[key] for key in ("mean_floor", "win_rate", "act1_boss", "act2_boss", "act3_boss",
+                                             "runs", "failed", "valid")},
+               "seconds": round(seconds, 1), "file": f"{name}.pt"}
+        self._write_generation_row(row)
+        self._prune_generations()
+        self.evaluated = self.steps
+        self._snapshot["evaluated"] = self.evaluated
+        log.info("generation at update %d: mean floor %.2f, win rate %.3f, failed %d of %d%s, %.0f s",
+                 self.updates, best["mean_floor"], best["win_rate"], best["failed"], best["runs"],
+                 "" if best["valid"] else " (invalid)", seconds)
+
+    def _write_generation_row(self, row: dict) -> None:
+        path = self.run.folder / "generations.csv"
+        line = io.StringIO()
+        writer = csv.DictWriter(line, fieldnames=list(row), lineterminator="\n")
+        if not path.exists():
+            writer.writeheader()
+        writer.writerow(row)
+        with path.open("a", encoding="utf-8", newline="") as file:
+            file.write(line.getvalue())
+            file.flush()
+            os.fsync(file.fileno())
+
+    def _prune_generations(self) -> None:
+        """Keeps the checkpoints of the best generation and the latest generations_kept; the rest lose their file
+        (their row and result stay)."""
+        with (self.run.folder / "generations.csv").open(encoding="utf-8") as file:
+            rows = list(csv.DictReader(file))
+        keep = {row["file"] for row in rows[-self.config.generations_kept:]}
+        keep.add(max(rows, key=generation_key)["file"])
+        for row in rows:
+            path = self.run.folder / "generations" / row["file"]
+            if row["file"] not in keep and path.exists():
+                path.unlink()
+
+
+def generation_key(row: dict) -> tuple:
+    """Which generation is best: the highest win rate, then the highest mean floor (all that matters while no run
+    wins). An invalid evaluation is never the best."""
+    return (row["valid"] == "True" or row["valid"] is True, float(row["win_rate"]), float(row["mean_floor"]))
 
 
 def main(argv=None) -> int:

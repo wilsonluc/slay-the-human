@@ -23,7 +23,7 @@ from agent.env.vocabulary import Vocabulary
 # with margin.
 HAND = 10
 ENEMIES = 8
-POTIONS = 5
+POTIONS = 10  # 3 to start, plus Alchemical Coffer's 4, Potion Belt's 2 and Phial Holster's 1
 DECK = 150
 # Long fights fill piles with status cards (a slime fight's Slimed passed 100 exhausted cards).
 PILE = 300

@@ -14,8 +14,10 @@ class Config:
     lam: float = 0.99
     # The usual PPO clip range.
     clip: float = 0.2
-    # Constant: training length is open-ended, with resuming.
-    lr: float = 2.5e-4
+    # Constant: training length is open-ended, with resuming. Set from 20,000-step runs on the game (spec 011), each
+    # update's approximate KL over its last epoch: 2.5e-4 gave 0.003, 5e-4 0.007, 1e-3 0.022 (clip fraction 0.03, 0.08,
+    # 0.19). The lowest in PPO's usual 0.005 to 0.03.
+    lr: float = 5e-4
     # Steps per game per rollout: about 1,000 a rollout with 4 games, several random runs or part of a long one.
     steps: int = 256
     # The speed measurement's best rate per game; set per machine (about one per CPU core at most).

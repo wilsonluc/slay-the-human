@@ -1,6 +1,6 @@
 # 010: Evaluation and generations
 
-Status: draft
+Status: approved
 
 ## Problem
 
@@ -39,7 +39,7 @@ Generations:
 Baseline and target:
 
 - [ ] The random agent's evaluation on the seed set is recorded in the repo as phase 0's baseline.
-- [ ] Phase 0's target is written in `ROADMAP.md`: a generation whose best-action mean floor is at least twice the random agent's, within 1,000,000 training steps. Spec 009's training run is evaluated against it, and the result is recorded in the roadmap's record when it passes.
+- [ ] Phase 0's target is written in `ROADMAP.md`: a generation whose best-action mean floor is at least twice the random agent's, within 1,000,000 training steps. A training run under this spec, with generations, is evaluated against it (spec 009's checkpoint predates the potion-slot change and no longer loads), and the result is recorded in the roadmap's record when it passes.
 
 Tests:
 

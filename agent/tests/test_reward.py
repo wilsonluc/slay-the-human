@@ -92,7 +92,6 @@ class WorkedRunsTest(unittest.TestCase):
 
     def test_repeating_a_state_adds_nothing(self):
         state_ = scores(5, hp=0.5, combats=4, kills=1)
-        self.assertEqual(sum(reward.PROGRESS[t] * 0 for t in reward.PROGRESS), 0)
         for term, value in reward.terms(state_, state_, GAMMA).items():
             if term in reward.PROGRESS:
                 self.assertEqual(value, 0.0, term)

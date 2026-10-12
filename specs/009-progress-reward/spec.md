@@ -1,6 +1,6 @@
 # 009: Progress reward
 
-Status: approved
+Status: done
 
 ## Problem
 
@@ -31,25 +31,25 @@ A reward under which, while the agent cannot yet win, going further pays and dra
 
 The reward:
 
-- [ ] Progress is rewarded when it happens and is never taken back: a reward for each floor reached for the first time in the run, and for each elite and each boss killed. These are not potential-based, so their total over a run grows with how far it got.
-- [ ] A loss costs nothing of its own. Dying is bad because it ends the progress that would have followed, so nothing is gained by putting it off.
-- [ ] A win adds a reward of its own on top of the progress it took to get there.
-- [ ] HP and combat progress stay as potential-based shaping, as in spec 007, to help credit actions within a fight. Their total over a terminated run stays the negative of their starting scores, so they reward nothing by themselves.
-- [ ] Each term's weight is set in one place and documented, with the reasons; one full run's worth of progress is on the same scale as a win.
-- [ ] The reward's hash changes, so no checkpoint trained on the old reward loads against it.
+- [x] Progress is rewarded when it happens and is never taken back: a reward for each floor reached for the first time in the run, and for each elite and each boss killed. These are not potential-based, so their total over a run grows with how far it got.
+- [x] A loss costs nothing of its own. Dying is bad because it ends the progress that would have followed, so nothing is gained by putting it off.
+- [x] A win adds a reward of its own on top of the progress it took to get there.
+- [x] HP and combat progress stay as potential-based shaping, as in spec 007, to help credit actions within a fight. Their total over a terminated run stays the negative of their starting scores, so they reward nothing by themselves.
+- [x] Each term's weight is set in one place and documented, with the reasons; one full run's worth of progress is on the same scale as a win.
+- [x] The reward's hash changes, so no checkpoint trained on the old reward loads against it.
 
 Tests on worked example runs (no game), discounted with the training discount:
 
-- [ ] A loss on floor 17 returns more than a loss on floor 5, and more than a loss on floor 5 that took three times as many steps.
-- [ ] Reaching the same floors in more steps returns less than reaching them in fewer: stalling never pays.
-- [ ] A win returns more than any loss.
-- [ ] Repeating a state (a floor already reached, a reward screen reopened, an enemy that heals) adds no reward.
-- [ ] The HP and combat shaping still add up to minus their starting scores over a terminated run.
+- [x] A loss on floor 17 returns more than a loss on floor 5, and more than a loss on floor 5 that took three times as many steps.
+- [x] Reaching the same floors in more steps returns less than reaching them in fewer: stalling never pays.
+- [x] A win returns more than any loss.
+- [x] Repeating a state (a floor already reached, a reward screen reopened, an enemy that heals) adds no reward.
+- [x] The HP and combat shaping still add up to minus their starting scores over a terminated run.
 
 Training:
 
-- [ ] A training run with the new reward, otherwise configured like the first (4 games, the same settings), reaches 300,000 steps. Over its last 500 runs at that point, its mean floor is at least 10, against 8.7 for the first run at the same step count, and its steps per floor reached are at most 13, against 18.8.
-- [ ] `metrics.csv` reports turns per combat, so stalling shows up without reading traces.
+- [x] A training run with the new reward, otherwise configured like the first (4 games, the same settings), reaches 300,000 steps. Over its last 500 runs at that point, its mean floor is at least 10, against 8.7 for the first run at the same step count, and its steps per floor reached are at most 13, against 18.8.
+- [x] `metrics.csv` reports turns per combat, so stalling shows up without reading traces.
 
 ## Open questions
 

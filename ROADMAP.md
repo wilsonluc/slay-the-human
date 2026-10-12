@@ -31,9 +31,10 @@ Phase 2's choice is made, and written here, when phase 1 ends: keep refining Iro
 
 ## Targets
 
-| Phase | Target win rate | Set from |
+| Phase | Target | Set from |
 |---|---|---|
-| 1.0 - 1.10 | to be set | baseline measurements |
+| 0 | a generation's best-action mean floor at least twice the random agent's (2 x 5.18 = 10.36), within 1,000,000 training steps | the random agent on the evaluation seeds (`docs/baselines/random.json`) |
+| 1.0 - 1.10 | win rate, to be set | baseline measurements |
 
 ## Record
 

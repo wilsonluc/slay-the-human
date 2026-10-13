@@ -39,6 +39,7 @@ In run mode, games keep every resource they load and run with no frame cap, and 
 - [ ] Memory stays bounded: over a training run of at least 250,000 steps, no game passes the environment's memory limit, and the most memory a game holds is reported.
 - [ ] The default number of games is the fastest measured in training (six, unless a later measurement says otherwise).
 - [ ] A training run with the default settings, otherwise like spec 011's, makes at least 1.8 times spec 011's 26.3 steps a second over its first 250,000 steps.
+- [ ] In run mode, loading a run's, act's or room's assets forces no garbage collection, and a game's time per frame does not grow with its age. The game log shows how many forced collections were removed. (Added during the build: the first 250,000-step run slowed each game by about a quarter as it aged, since each room's forced full collection took longer as the game held more objects, about a second a run and growing.)
 - [ ] A stop can be requested while training runs, and lets the games' runs finish: from the next update no game starts a new run, training goes on with the steps the runs in progress still play, and once every game is idle it stops with a checkpoint. A test on the fake environment shows the runs in progress finishing and none starting. (Added during the build: faster runs make long training runs routine, and a stop that kills runs mid-way wastes them.)
 - [ ] `ROADMAP.md`'s speed paragraph has the new measurements and their date.
 

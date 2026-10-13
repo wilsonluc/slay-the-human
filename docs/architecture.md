@@ -37,7 +37,7 @@ agent/
   evaluate.py        a checkpoint or the random agent on the evaluation seeds; best action and sampled  010
   checkpoint.py      owns runs/<training run>/: config.json, metrics.csv, checkpoints; save and resume 008, last N and best 010
   tests/             one file per module, runnable in CI, plus a fake game (007) and a fake environment (008)
-dashboard/           React and MUI X on GitHub Pages; compares generations (evaluated checkpoints); reads exported runs/*/metrics.csv and config.json    012
+dashboard/           React and MUI X on GitHub Pages; compares generations (evaluated checkpoints); reads exported runs/*/metrics.csv and config.json    013
 runs/                gitignored: game logs, traces, run records, checkpoints, evaluation results
 pyproject.toml       Python version and pinned dependencies (numpy from 007, torch from 008)
 ```

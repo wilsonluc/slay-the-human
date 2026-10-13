@@ -111,10 +111,11 @@ internal static class RunTiming
         }
     }
 
-    /// <summary>Harmony calls this once per patched method and once at the end, with no method.</summary>
+    /// <summary>Harmony calls this once per patched method and once at the end, with no method, even when Prepare
+    /// declined the patch.</summary>
     private static void Cleanup(MethodBase? original)
     {
-        if (original is null)
+        if (original is null && RunMode.IsOn)
         {
             Log.Info($"[{ModEntry.Id}] AutoSlay timing: {_calls} sleeps and waits replaced in {_methods} methods");
         }

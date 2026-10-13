@@ -1,6 +1,6 @@
 # 012: Faster games
 
-Status: approved
+Status: done
 
 ## Problem
 
@@ -32,16 +32,31 @@ In run mode, games keep every resource they load and run with no frame cap, and 
 
 ## Acceptance criteria
 
-- [ ] In run mode, no resource the game loads is freed while the game runs, and the game's own asset unloading does nothing. The game log shows how many resources are kept.
-- [ ] In run mode the frame cap is off from startup, whatever the frame rate setting. The game log shows the frame cap the mod set.
-- [ ] A normal launch keeps the player's frame rate and frees resources as before.
-- [ ] Runs are unchanged: spec 011's best checkpoint, evaluated on the 200 evaluation seeds with the best action, gives the same result per seed as before this change, apart from runs that fail (game crashes) in either evaluation.
-- [ ] Memory stays bounded: over a training run of at least 250,000 steps, no game passes the environment's memory limit, and the most memory a game holds is reported.
-- [ ] The default number of games is the fastest measured in training (six, unless a later measurement says otherwise).
-- [ ] A training run with the default settings, otherwise like spec 011's, makes at least 1.8 times spec 011's 26.3 steps a second over its first 250,000 steps.
-- [ ] In run mode, loading a run's, act's or room's assets forces no garbage collection, and a game's time per frame does not grow with its age. The game log shows how many forced collections were removed. (Added during the build: the first 250,000-step run slowed each game by about a quarter as it aged, since each room's forced full collection took longer as the game held more objects, about a second a run and growing.)
-- [ ] A stop can be requested while training runs, and lets the games' runs finish: from the next update no game starts a new run, training goes on with the steps the runs in progress still play, and once every game is idle it stops with a checkpoint. A test on the fake environment shows the runs in progress finishing and none starting. (Added during the build: faster runs make long training runs routine, and a stop that kills runs mid-way wastes them.)
-- [ ] `ROADMAP.md`'s speed paragraph has the new measurements and their date.
+- [x] In run mode, no resource the game loads is freed while the game runs, and the game's own asset unloading does nothing. The game log shows how many resources are kept.
+- [x] In run mode the frame cap is off from startup, whatever the frame rate setting. The game log shows the frame cap the mod set.
+- [x] A normal launch keeps the player's frame rate and frees resources as before.
+- [x] Runs are unchanged: spec 011's best checkpoint, evaluated on the 200 evaluation seeds with the best action, gives the same result per seed as before this change, apart from runs that fail (game crashes) in either evaluation.
+- [x] Memory stays bounded: over a training run of at least 250,000 steps, no game passes the environment's memory limit, and the most memory a game holds is reported.
+- [x] The default number of games is the fastest measured in training (six, unless a later measurement says otherwise).
+- [x] A training run with the default settings, otherwise like spec 011's, makes at least 1.8 times spec 011's 26.3 steps a second over its first 250,000 steps.
+- [x] In run mode, loading a run's, act's or room's assets forces no garbage collection, and a game's time per frame does not grow with its age. The game log shows how many forced collections were removed. (Added during the build: the first 250,000-step run slowed each game by about a quarter as it aged, since each room's forced full collection took longer as the game held more objects, about a second a run and growing.)
+- [x] A stop can be requested while training runs, and lets the games' runs finish: from the next update no game starts a new run, training goes on with the steps the runs in progress still play, and once every game is idle it stops with a checkpoint. A test on the fake environment shows the runs in progress finishing and none starting. (Added during the build: faster runs make long training runs routine, and a stop that kills runs mid-way wastes them.)
+- [x] `ROADMAP.md`'s speed paragraph has the new measurements and their date.
+
+## Result
+
+Training run `runs/20261014-091022` (seed 2032, the defaults: 6 games, GPU), commit `74359ee`:
+
+| | Spec 011 (4 games), first 250,000 steps | First build of this spec | This spec |
+|---|---|---|---|
+| Steps a second, mean of updates | 25.9 | 47.2 | 61.2 |
+| Steps a second, overall | 25.6 | 46.0 | 60.5 |
+| Failed runs | 12 | 18 | 6 |
+| Most memory a game held | | 2.1 GB | 2.8 GB |
+
+That is 2.3 times spec 011's 26.3 steps a second. The first build fell short (46 to 47): each game slowed by about a quarter as it aged, which removing the forced garbage collections fixed. With them gone a game's time per update stayed at 13.8 to 14.1 s from launch to 140 updates. The most memory a game held still grew late in the run, by about 0.1 GB every 20 updates; the environment's memory limit relaunches a game that reaches it. The generation at 250,000 steps had a mean floor of 13.82 with no failed runs.
+
+`spec-011.pt`, evaluated with the best action, gave the same outcome, floor and steps as its generation on all 200 evaluation seeds, with no failed runs.
 
 ## Open questions
 

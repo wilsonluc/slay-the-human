@@ -109,10 +109,11 @@ internal static class NoForcedCollection
         }
     }
 
-    /// <summary>Harmony calls this once per patched method and once at the end, with no method.</summary>
+    /// <summary>Harmony calls this once per patched method and once at the end, with no method, even when Prepare
+    /// declined the patch.</summary>
     private static void Cleanup(MethodBase? original)
     {
-        if (original is null)
+        if (original is null && RunMode.IsOn)
         {
             Log.Info($"[{ModEntry.Id}] forced collections removed: {_calls}");
         }

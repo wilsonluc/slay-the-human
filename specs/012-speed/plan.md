@@ -16,6 +16,10 @@ Memory then grows with the number of distinct resources the runs have touched, b
 
 `mod/NoFrameCap.cs`, a run-mode postfix on `NGame.InitializeGraphicsPreferences` (which sets `Engine.MaxFps` from the player's settings at startup), sets `Engine.MaxFps` to 0 and logs it. The background limit (`NBackgroundModeHandler`) never applies in run mode: a game with no window gets no focus events. The prototype's game logs show it never logged its limit.
 
+### Rest site buttons
+
+Faster frames widen a race in the rest site handler: a chosen option leaves the room's option list a few frames before its button is replaced, and a stale button clicked in that gap fails the run (5 of 200 evaluation runs with the first build; twice in spec 011's whole run). `mod/AgentRestSite.cs` waits until every live button's option is in the room's list before offering the choice.
+
 ### Games and memory
 
 `config.py`'s `games` default goes to 6, with the measurements in its comment. The environment keeps the most memory its game has held (`peak_memory`, across relaunches), and the trainer's per-update timing line shows it per game.
@@ -23,6 +27,7 @@ Memory then grows with the number of distinct resources the runs have touched, b
 ## Changes
 
 - `mod/KeepResources.cs`, `mod/NoFrameCap.cs`: new.
+- `mod/AgentRestSite.cs`: buttons checked against the room's options.
 - `agent/env/environment.py`: `peak_memory`.
 - `agent/ppo/train.py`: memory in the timing line.
 - `agent/ppo/config.py`: `games` 6.

@@ -37,7 +37,7 @@ python -m agent.random_agent --games 4 --runs 120 --seed 41
 seed=41
 game=game0 seed=WSLL2KN1WJ outcome=loss floor=5 steps=44 per_second=13.1
 ...
-agent_seed=41 games=4 runs=120 steps=6671 steps_per_second=27.7 per_game=6.9 runs_per_hour=1794 mean_floor=5.1 max_floor=13 launch_seconds=57 out=runs\20261010-230057
+agent_seed=41 games=4 runs=120 steps=6723 steps_per_second=49.0 per_game=12.3 runs_per_hour=3150 mean_floor=5.1 max_floor=12 launch_seconds=52 out=runs\20261013-204342
 largest choices=20 deck=20 discard=20 ...
 ```
 
@@ -58,7 +58,7 @@ When the game updates, `python -m agent.env.vocabulary --update` appends the new
 `python -m agent.ppo.train` trains a PPO policy on several games at once. Each training run gets its own folder, `runs/<time>/`, holding its record (`config.json`: every setting, the seed, the git commit, the game build and the vocabulary, schema, protocol and reward identities), one row of metrics per update (`metrics.csv`), its latest checkpoint (`checkpoint.pt`), its log (`train.log`, which also shows each game's time per update), and the games' logs, traces and `summary.jsonl`.
 
 ```
-python -m agent.ppo.train --games 4
+python -m agent.ppo.train --games 6
 python -m agent.ppo.train --resume runs/<time>
 ```
 

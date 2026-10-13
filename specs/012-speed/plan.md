@@ -20,6 +20,10 @@ Memory then grows with the number of distinct resources the runs have touched, b
 
 Faster frames widen a race in the rest site handler: a chosen option leaves the room's option list a few frames before its button is replaced, and a stale button clicked in that gap fails the run (5 of 200 evaluation runs with the first build; twice in spec 011's whole run). `mod/AgentRestSite.cs` waits until every live button's option is in the room's list before offering the choice.
 
+### Requested stop
+
+A file named `stop` in the training run's folder requests a stop. The trainer checks for it before each update; once seen, the collector drains: a game whose run ends stops filling its column instead of starting a new run, and the buffer marks which steps the rollout filled. The update, the advantages' use, explained variance, legal actions and the step count use the filled steps only (GAE already stops at a run's end, so the unfilled steps after it never reach the filled ones). Generations wait while draining. When every game is idle, training stops with a checkpoint (reason "stop requested") and removes the file, so a resume trains normally.
+
 ### Games and memory
 
 `config.py`'s `games` default goes to 6, with the measurements in its comment. The environment keeps the most memory its game has held (`peak_memory`, across relaunches), and the trainer's per-update timing line shows it per game.
@@ -31,6 +35,7 @@ Faster frames widen a race in the rest site handler: a chosen option leaves the 
 - `agent/env/environment.py`: `peak_memory`.
 - `agent/ppo/train.py`: memory in the timing line.
 - `agent/ppo/config.py`: `games` 6.
+- `agent/ppo/train.py`, `agent/ppo/rollout.py`, `agent/ppo/buffer.py`: the requested stop.
 - `agent/tests/`: the peak memory on a fake game.
 - `ROADMAP.md` (speed paragraph), `docs/architecture.md`, `README.md` (game count examples), `CONTEXT.md` (kept resources).
 
@@ -39,6 +44,7 @@ Faster frames widen a race in the rest site handler: a chosen option leaves the 
 - Kept resources, frame cap → the game log of a run-mode launch shows the kept count and `max fps 0`. A normal launch shows neither line, since the patch classes are run-mode only.
 - Runs unchanged → `python -m agent.evaluate runs/20261012-215539/spec-011.pt --modes best`, compared seed by seed with the generation's result `runs/20261012-215539/generations/update-733.json`.
 - Memory bounded, speed, default games → a training run with the defaults (seed 2032, cuda) to at least 250,000 steps: the timing lines' peak memory stays under the limit, and `metrics.csv`'s mean steps per second over the run is at least 47.3 (1.8 × 26.3).
+- Requested stop → `test_train`'s requested stop on the fake environment (runs in progress finish, none start, the file is removed), and `test_buffer`'s minibatches skipping unfilled steps.
 - Roadmap → the speed paragraph's figures come from the prototype's and this run's measurements.
 
 ## Risks

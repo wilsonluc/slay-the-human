@@ -40,6 +40,8 @@ class Buffer:
         self.truncated = np.zeros((steps, games), bool)
         self.bootstrap = np.zeros((steps, games), np.float32)
         self.kind = np.zeros((steps, games), np.int64)  # the decision kind's vocabulary index (global_ids[0])
+        # Which steps this rollout filled: all of them, except a draining game's after its last run ended.
+        self.filled = np.zeros((steps, games), bool)
 
     def store(self, t: int, game: int, obs: dict, mask, action: int, log_prob: float, value: float) -> None:
         for key, array in obs.items():
@@ -47,6 +49,7 @@ class Buffer:
         self.mask[t, game] = mask
         self.action[t, game], self.log_prob[t, game], self.value[t, game] = action, log_prob, value
         self.kind[t, game] = obs["global_ids"][0]
+        self.filled[t, game] = True
 
     def result(self, t: int, game: int, reward: float, terminated: bool, truncated: bool, bootstrap: float = 0.0):
         self.reward[t, game], self.terminated[t, game], self.truncated[t, game] = reward, terminated, truncated
@@ -58,10 +61,10 @@ class Buffer:
         self.returns = self.advantage + self.value
 
     def minibatches(self, size: int, rng: np.random.Generator):
-        """Shuffled minibatches over every step of every game, as flat arrays."""
+        """Shuffled minibatches over every filled step of every game, as flat arrays."""
         count = self.steps * self.games
-        order = rng.permutation(count)
         flat = lambda array: array.reshape(count, *array.shape[2:])
+        order = rng.permutation(np.flatnonzero(flat(self.filled)))
         for start in range(0, count, size):
             rows = order[start:start + size]
             yield {

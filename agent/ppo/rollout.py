@@ -29,6 +29,8 @@ class Collector:
         self.masks: list = [None] * len(envs)
         self.episode_steps = [0] * len(envs)
         self.episode_return = [0.0] * len(envs)
+        # Draining: no game starts a new run, and a game whose run ends stops filling its column.
+        self.draining = False
         # Per game, for the last rollout: seconds spent in the game's steps, in the policy, and in all.
         self.timing: list[dict] = []
         self._pool = ThreadPoolExecutor(len(envs), thread_name_prefix="game")
@@ -40,6 +42,7 @@ class Collector:
         torch.set_num_threads(1)  # one thread per game already; more would fight over the cores
         try:
             self.policy.eval()
+            buffer.filled[:] = False
             self.timing = [{} for _ in self.envs]
             began = time.monotonic()
             columns = [self._pool.submit(self._column, game, buffer) for game in range(len(self.envs))]
@@ -51,6 +54,11 @@ class Collector:
             torch.set_num_threads(threads)
         ended = [run for runs, _ in results for run in runs]
         return ended, np.array([value for _, value in results], np.float32)
+
+    @property
+    def idle(self) -> bool:
+        """No game has a run in progress."""
+        return all(obs is None for obs in self.obs)
 
     def close(self) -> None:
         self._pool.shutdown(wait=False, cancel_futures=True)
@@ -68,6 +76,8 @@ class Collector:
         began, in_game, in_policy = time.monotonic(), 0.0, 0.0
         for t in range(buffer.steps):
             if self.obs[game] is None:
+                if self.draining:
+                    break
                 self._reset(game, ended)
             obs, mask = self.obs[game], self.masks[game]
             thought = time.monotonic()

@@ -25,6 +25,7 @@ In run mode, games keep every resource they load and run with no frame cap, and 
 
 - The results dashboard (now spec 013).
 - Changing the player's saved settings. A normal launch of the game keeps its frame rate and its resource handling.
+- A user interface for the stop request; any local tool can create the file.
 - Batching policy inference across games (the next lever if inference becomes the limit).
 - A combat-only environment or a simulator of the game.
 - A learning rate that decays over the run.
@@ -38,6 +39,7 @@ In run mode, games keep every resource they load and run with no frame cap, and 
 - [ ] Memory stays bounded: over a training run of at least 250,000 steps, no game passes the environment's memory limit, and the most memory a game holds is reported.
 - [ ] The default number of games is the fastest measured in training (six, unless a later measurement says otherwise).
 - [ ] A training run with the default settings, otherwise like spec 011's, makes at least 1.8 times spec 011's 26.3 steps a second over its first 250,000 steps.
+- [ ] A stop can be requested while training runs, and lets the games' runs finish: from the next update no game starts a new run, training goes on with the steps the runs in progress still play, and once every game is idle it stops with a checkpoint. A test on the fake environment shows the runs in progress finishing and none starting. (Added during the build: faster runs make long training runs routine, and a stop that kills runs mid-way wastes them.)
 - [ ] `ROADMAP.md`'s speed paragraph has the new measurements and their date.
 
 ## Open questions

@@ -1,6 +1,6 @@
 # 011: Exploration and credit for bosses
 
-Status: approved
+Status: done
 
 ## Problem
 

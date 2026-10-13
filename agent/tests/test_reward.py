@@ -17,7 +17,7 @@ def state(floor=1, hp=80, max_hp=80, combats_won=0, elites=0, bosses=0, enemies=
 class ScoresTest(unittest.TestCase):
     def test_hand_worked_scores(self):
         scores = reward.Scores()(state(floor=12, hp=40, max_hp=80, combats_won=6, elites=2, bosses=1))
-        self.assertEqual(scores, {"floor": 12 / 48, "hp": 0.5, "combat": 6 / 48, "kills": 3 / 48})
+        self.assertEqual(scores, {"floor": 12 / 48, "hp": 0.5, "combat": 6 / 48, "kills": 3 / 48, "bosses": 1 / 3})
 
     def test_combat_fraction_counts_every_enemy_seen(self):
         scores = reward.Scores()
@@ -41,18 +41,24 @@ class ScoresTest(unittest.TestCase):
 GAMMA = 0.999
 
 
-def scores(floor, hp=1.0, combats=0.0, kills=0):
-    return {"floor": floor / 48, "hp": hp, "combat": combats / 48, "kills": kills / 48}
+def scores(floor, hp=1.0, combats=0.0, kills=0, bosses=0):
+    return {"floor": floor / 48, "hp": hp, "combat": combats / 48, "kills": kills / 48, "bosses": bosses / 3}
+
+
+def bosses_passed(floor: int, won: bool) -> int:
+    """Act bosses killed by a run on this floor, with bosses on floors 17, 33 and 48."""
+    return 3 if won else (floor > 17) + (floor > 33)
 
 
 def run(floors: int, steps: int, won=False, kills=0) -> list[dict]:
     """A run's scores, step by step: floors reached evenly over the steps, one combat won per floor, HP falling to
-    nothing for a loss, kills on the last floors; then zero() after the run ends."""
+    nothing for a loss, kills on the last floors, each act's boss once past its floor; then zero() after the run
+    ends."""
     path = []
     for t in range(steps + 1):
         floor = 1 + (floors - 1) * t // steps
         path.append(scores(floor, hp=1.0 if won else 1.0 - t / steps, combats=floor - 1,
-                           kills=max(0, kills - (floors - floor))))
+                           kills=max(0, kills - (floors - floor)), bosses=bosses_passed(floor, won and t == steps)))
     return path + [reward.zero()]
 
 
@@ -74,6 +80,12 @@ class WorkedRunsTest(unittest.TestCase):
         deep = discounted_return(run(17, 300, kills=2), "loss")
         self.assertGreater(deep, discounted_return(run(5, 100), "loss"))
         self.assertGreater(deep, discounted_return(run(5, 300), "loss"))
+
+    def test_beating_a_boss_stands_out(self):
+        # Spec 011: a loss just past the act 1 boss returns clearly more than a loss at it, by about the boss bonus.
+        at = discounted_return(run(17, 300, kills=1), "loss")
+        past = discounted_return(run(18, 320, kills=2), "loss")
+        self.assertGreater(past - at, 0.25)
 
     def test_stalling_never_pays(self):
         for floors in (5, 17, 40):
@@ -112,17 +124,18 @@ class WorkedRunsTest(unittest.TestCase):
 
 class TermsTest(unittest.TestCase):
     def test_hand_worked_step(self):
-        before = {"floor": 0.1, "hp": 1.0, "combat": 0.0, "kills": 0.0}
-        after = {"floor": 0.2, "hp": 0.5, "combat": 0.0, "kills": 1 / 48}
+        before = {"floor": 0.1, "hp": 1.0, "combat": 0.0, "kills": 0.0, "bosses": 0.0}
+        after = {"floor": 0.2, "hp": 0.5, "combat": 0.0, "kills": 1 / 48, "bosses": 1 / 3}
         parts = reward.terms(before, after, gamma=0.5)
         self.assertAlmostEqual(parts["floor"], 1.0 * 0.1)
         self.assertAlmostEqual(parts["kills"], 1 / 48)
+        self.assertAlmostEqual(parts["bosses"], 1 / 3)
         self.assertAlmostEqual(parts["hp"], 0.25 * (0.5 * 0.5 - 1.0))
         self.assertEqual(parts["combat"], 0.0)
 
     def test_progress_pays_nothing_when_the_run_ends(self):
-        parts = reward.terms(scores(12, kills=3), reward.zero(), GAMMA)
-        self.assertEqual((parts["floor"], parts["kills"]), (0.0, 0.0))
+        parts = reward.terms(scores(20, kills=3, bosses=1), reward.zero(), GAMMA)
+        self.assertEqual((parts["floor"], parts["kills"], parts["bosses"]), (0.0, 0.0, 0.0))
 
     def test_truncated_run_keeps_its_scores(self):
         report = reward.RunReport(0.99, scores(4))

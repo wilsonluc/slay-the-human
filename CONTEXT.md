@@ -28,7 +28,7 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 - **Episode**: everything from an environment reset to the end. Depending on the environment, that is one combat or one run.
 - **Terminated**: an episode that ended in the game: a win or a loss.
 - **Truncated**: an episode cut short by a failure (the game stopped, hung or disconnected) or by the per-run step limit. The learner bootstraps from the value estimate instead of treating it as a loss.
-- **Progress reward**: reward paid once, when the run gets further: a floor reached for the first time, an elite or boss killed. Never taken back, so a run's total grows with how far it got.
+- **Progress reward**: reward paid once, when the run gets further: a floor reached for the first time, an elite or boss killed, and an act's boss killed (worth a third of a win). Never taken back, so a run's total grows with how far it got.
 - **Shaping**: potential-based reward terms (HP, combat progress) that add up to minus their starting scores over a run; they help credit actions within a fight and reward nothing by themselves.
 - **Trace**: the full record of every decision, action, outcome reward and reward term score in a run (`.trace.jsonl`), kept for evaluation runs, failed runs and a sample of training runs.
 - **Summary row**: what every other training run keeps instead of a trace: seed, outcome, floor, steps, reward term results, failure reason, and the action indices that replay it.

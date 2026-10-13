@@ -143,6 +143,7 @@ class EnvironmentTest(unittest.TestCase):
             steps = play(env, random.Random(11))
         self.assertTrue(steps[-1][2])
         self.assertIn("past the 0.2 GB limit", steps[-1][3]["outcome"])
+        self.assertGreater(env.peak_memory, 0.2 * 2**30, "the peak includes the reading past the limit")
 
     def test_an_illegal_action_raises_naming_it_and_relaunches(self):
         env = self.env()

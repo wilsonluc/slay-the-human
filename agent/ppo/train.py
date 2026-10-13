@@ -6,6 +6,10 @@
 Each update: collect a rollout from every game, compute advantages, run the clipped PPO update, and write a row to
 metrics.csv. A checkpoint is saved every checkpoint_every updates and whenever training stops: at the step budget, when
 too many recent runs failed (the failure budget), on an interrupt, or on an error.
+
+A file named stop in the training run's folder requests a stop that lets the games' runs finish: from the next update,
+no game starts a new run, training goes on with the steps the runs in progress still play, and once every game is idle
+it stops, with a checkpoint, and removes the file.
 """
 
 import collections
@@ -32,6 +36,8 @@ from agent.ppo.buffer import Buffer
 from agent.ppo.config import Config, parse
 from agent.ppo.model import Policy, as_tensors, masked
 from agent.ppo.rollout import Collector
+
+STOP_FILE = "stop"
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +89,7 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
                     stats["entropy"].append(float(entropy.mean()))
                     for kind, value_ in zip(batch["kind"], entropy.tolist()):
                         entropy_of[kinds.get(int(kind), "other")].append(value_)
-    returns, values = buffer.returns.ravel(), buffer.value.ravel()
+    returns, values = buffer.returns[buffer.filled], buffer.value[buffer.filled]
     variance = np.var(returns)
     metrics = {name: float(np.mean(values_)) for name, values_ in stats.items()}
     metrics["explained_variance"] = float(1 - np.var(returns - values) / variance) if variance > 0 else 0.0
@@ -114,7 +120,7 @@ def game_metrics(ended: list[dict], buffer: Buffer) -> dict:
         "mean_return": mean([run["return"] for run in finished]),
         "turns_per_combat": mean([run["run"]["turns_per_combat"] for run in finished
                                   if run["run"] and run["run"].get("turns_per_combat") is not None]),
-        "legal_actions": float(buffer.mask.sum(-1).mean()),
+        "legal_actions": float(buffer.mask[buffer.filled].sum(-1).mean()),
         "card_rewards_taken": share([run["run"]["card_rewards"] for run in finished if run["run"]]),
         "failed_runs": sum(failed(run) for run in ended),
     }
@@ -190,21 +196,37 @@ class Trainer:
         last completed update."""
         if self._snapshot is None:
             self._snapshot = copy.deepcopy(self.state())
+        stop = self.run.folder / STOP_FILE
         try:
             while self.steps < self.config.total_steps:
+                if stop.exists() and not self.collector.draining:
+                    self.collector.draining = True
+                    log.info("stop requested: no new runs; finishing %d runs in progress", self._in_progress())
+                if self.collector.draining and self.collector.idle:
+                    break
                 self._one_update()
-                if self.steps // self.config.evaluate_every > self.evaluated // self.config.evaluate_every:
+                if self.collector.draining:
+                    log.info("draining: %d runs in progress", self._in_progress())
+                elif self.steps // self.config.evaluate_every > self.evaluated // self.config.evaluate_every:
                     self._generation()
                 if self.updates % self.config.checkpoint_every == 0:
                     self.run.save(self._snapshot)
-            reason = "step budget"
-            log.info("stopping: reached %d steps (the step budget %d)", self.steps, self.config.total_steps)
+            if self.collector.draining:
+                reason = "stop requested"
+                stop.unlink(missing_ok=True)
+                log.info("stopping: requested, every game's run has finished")
+            else:
+                reason = "step budget"
+                log.info("stopping: reached %d steps (the step budget %d)", self.steps, self.config.total_steps)
         except BaseException as e:
             self.run.save(self._snapshot)
             log.error("stopping after update %d: %s: %s", self.updates, type(e).__name__, e)
             raise
         self.run.save(self._snapshot)
         return reason
+
+    def _in_progress(self) -> int:
+        return sum(obs is not None for obs in self.collector.obs)
 
     def _one_update(self) -> None:
         began = time.monotonic()
@@ -216,20 +238,22 @@ class Trainer:
             self.player.load_state_dict(self.policy.state_dict())
         finished = time.monotonic()
         self.updates += 1
-        self.steps += self.buffer.steps * self.buffer.games
+        filled = int(self.buffer.filled.sum())
+        self.steps += filled
         self.window.extend(run["outcome"] if failed(run) else None for run in ended)
         elapsed = finished - began
         row = {"update": self.updates, "step": self.steps, "time": round(time.time(), 1), **learner,
                "learning_rate": self.optimizer.param_groups[0]["lr"],
-               "steps_per_second": self.buffer.steps * self.buffer.games / elapsed,
+               "steps_per_second": filled / elapsed,
                "update_share": (finished - collected) / elapsed, **game_metrics(ended, self.buffer)}
         self.run.write_metrics(row)
         self._snapshot = copy.deepcopy(self.state())
         log.info("update %d: step %d, %.1f steps/s, %d runs ended, mean floor %s, failed %d", self.updates, self.steps,
                  row["steps_per_second"], row["runs"], row["mean_floor"], row["failed_runs"])
-        # Per game: seconds in the game's steps, in the policy, and waiting for the slowest game.
+        # Per game: seconds in the game's steps, in the policy, and waiting for the slowest game; the most memory it held.
         log.info("update %d timing: %s", self.updates, " ".join(
             f"{env.name}=game {t['game']:.0f}s/policy {t['policy']:.0f}s/waited {t['waited']:.0f}s"
+            f"/peak {env.peak_memory / 2**30:.1f} GB"
             for env, t in zip(self.envs, self.collector.timing)))
         failures = [outcome for outcome in self.window if outcome is not None]
         if len(failures) > self.config.failure_budget:

@@ -42,7 +42,11 @@ internal static class AgentRestSite
         while (!done)
         {
             ct.ThrowIfCancellationRequested();
+            // A chosen option leaves the room's list a few frames before its button is replaced, more frames the
+            // faster they run; a stale button clicked then fails the run.
             var buttons = Ui.Live<NRestSiteButton>(room!);
+            await Wait.Until(() => (buttons = Ui.Live<NRestSiteButton>(room!)).All(button => room!.Options.Contains(button.Option)),
+                RoomTimeout, "the rest site's buttons to match its options", ct);
             var decision = new Decision("rest");
             decision.State["options"] = new JsonArray(buttons.Select(button => (JsonNode)new JsonObject
             {

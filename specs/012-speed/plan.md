@@ -1,0 +1,58 @@
+# 012: Plan
+
+## Approach
+
+### Kept resources
+
+`mod/KeepResources.cs`, a run-mode patch class:
+
+- Postfixes on Godot's `ResourceLoader.Load(string, string, CacheMode)` (the non-generic overload, which `Load<T>` goes through) and `ResourceLoader.LoadThreadedGet(string)` add every resource they return to a static set. The set holds a reference, so the resource, and the scripts and sub-resources it references, stay loaded for the life of the game.
+- Prefixes on `AssetCache.UnloadAssets` and `AssetCache.UnloadMissedCacheAssets` skip them, since they dispose resources the game no longer needs.
+- The game log shows the count each time it passes another 500.
+
+Memory then grows with the number of distinct resources the runs have touched, bounded by the game's own assets.
+
+### No forced collections
+
+`NoForcedCollection` in `mod/KeepResources.cs`, a run-mode transpiler, removes the `GC.Collect()` calls in `PreloadManager`'s asset loads (in the state machines of its async methods): one per run, act and room. They blocked the game for a full collection to free the assets just unloaded, and nothing is unloaded now. Each took longer the more objects the game held, and a game's orphaned nodes grow with every run, so a game slowed as it aged: in the first 250,000-step run a game took about 3.6 s longer per update after about 120 updates than a freshly launched one beside it. On 2 games playing `spec-011.pt`, removing them took the collection pauses from 0.95 ms a frame, rising to 1.58 after 60 runs, to a flat 0.7, and the frame time from 9.1 to 9.8 ms down to a flat 8.8. The game log shows how many calls were removed.
+
+### No frame cap
+
+`mod/NoFrameCap.cs`, a run-mode postfix on `NGame.InitializeGraphicsPreferences` (which sets `Engine.MaxFps` from the player's settings at startup), sets `Engine.MaxFps` to 0 and logs it. The background limit (`NBackgroundModeHandler`) never applies in run mode: a game with no window gets no focus events. The prototype's game logs show it never logged its limit.
+
+### Rest site buttons
+
+Faster frames widen a race in the rest site handler: a chosen option leaves the room's option list a few frames before its button is replaced, and a stale button clicked in that gap fails the run (5 of 200 evaluation runs with the first build; twice in spec 011's whole run). `mod/AgentRestSite.cs` waits until every live button's option is in the room's list before offering the choice.
+
+### Requested stop
+
+A file named `stop` in the training run's folder requests a stop. The trainer checks for it before each update; once seen, the collector drains: a game whose run ends stops filling its column instead of starting a new run, and the buffer marks which steps the rollout filled. The update, the advantages' use, explained variance, legal actions and the step count use the filled steps only (GAE already stops at a run's end, so the unfilled steps after it never reach the filled ones). Generations wait while draining. When every game is idle, training stops with a checkpoint (reason "stop requested") and removes the file, so a resume trains normally.
+
+### Games and memory
+
+`config.py`'s `games` default goes to 6, with the measurements in its comment. The environment keeps the most memory its game has held (`peak_memory`, across relaunches), and the trainer's per-update timing line shows it per game.
+
+## Changes
+
+- `mod/KeepResources.cs` (with the forced collections), `mod/NoFrameCap.cs`: new.
+- `mod/AgentRestSite.cs`: buttons checked against the room's options.
+- `agent/env/environment.py`: `peak_memory`.
+- `agent/ppo/train.py`: memory in the timing line.
+- `agent/ppo/config.py`: `games` 6.
+- `agent/ppo/train.py`, `agent/ppo/rollout.py`, `agent/ppo/buffer.py`: the requested stop.
+- `agent/tests/`: the peak memory on a fake game.
+- `ROADMAP.md` (speed paragraph), `docs/architecture.md`, `README.md` (game count examples), `CONTEXT.md` (kept resources).
+
+## Verification
+
+- Kept resources, frame cap → the game log of a run-mode launch shows the kept count and `max fps 0`. A normal launch shows neither line, since the patch classes are run-mode only.
+- Forced collections → the game log shows `forced collections removed: 3`; the training run's timing lines show a game's time per update not growing with the updates since its launch.
+- Runs unchanged → `python -m agent.evaluate runs/20261012-215539/spec-011.pt --modes best`, compared seed by seed with the generation's result `runs/20261012-215539/generations/update-733.json`.
+- Memory bounded, speed, default games → a training run with the defaults (seed 2032, cuda) to at least 250,000 steps: the timing lines' peak memory stays under the limit, and `metrics.csv`'s mean steps per second over the run is at least 47.3 (1.8 × 26.3).
+- Requested stop → `test_train`'s requested stop on the fake environment (runs in progress finish, none start, the file is removed), and `test_buffer`'s minibatches skipping unfilled steps.
+- Roadmap → the speed paragraph's figures come from the prototype's and this run's measurements.
+
+## Risks
+
+- A resource the game expects to be reloaded fresh (state kept on a resource object) → the evaluation check catches any change in play.
+- Memory grows past the limit over a long run → the 250,000-step run shows the peak; the environment's memory limit stays the backstop.

@@ -10,7 +10,7 @@ import torch
 from agent.checkpoint import TrainingRun
 from agent.env.vocabulary import Vocabulary
 from agent.ppo.config import Config, parse
-from agent.ppo.train import FailureBudget, Trainer, by_kind
+from agent.ppo.train import STOP_FILE, FailureBudget, Trainer, by_kind
 from agent.tests.fake_env import FakeEnvironment
 
 # Columns that depend on the machine's speed, not on the seed.
@@ -108,6 +108,26 @@ class TrainerTest(unittest.TestCase):
         envs[0].step = interrupted
         with self.assertRaises(KeyboardInterrupt):
             trainer.train()
+        self.assertEqual(trainer.run.load(self.vocabulary)["updates"], 2)
+
+    def test_a_requested_stop_lets_the_runs_in_progress_finish(self):
+        # Rollouts of 60 steps, episodes of 100: the stop is requested during the first rollout, so the second plays
+        # the last 40 steps of each run and starts none.
+        trainer = self.trainer(small(steps=60, minibatch=60, total_steps=10_000))
+        stop, step, calls = trainer.run.folder / STOP_FILE, trainer.envs[0].step, [0]
+
+        def requesting(action):
+            calls[0] += 1
+            if calls[0] == 30:
+                stop.touch()
+            return step(action)
+
+        trainer.envs[0].step = requesting
+        self.assertEqual(trainer.train(), "stop requested")
+        self.assertEqual([row["runs"] for row in rows(trainer.run)], ["0", "2"])
+        self.assertEqual(trainer.steps, 2 * 60 + 2 * 40)
+        self.assertEqual([env._episodes for env in trainer.envs], [1, 1])
+        self.assertFalse(stop.exists(), "the request is used up")
         self.assertEqual(trainer.run.load(self.vocabulary)["updates"], 2)
 
     def test_the_step_limit_is_not_a_failure(self):

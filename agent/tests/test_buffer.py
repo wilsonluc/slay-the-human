@@ -56,10 +56,21 @@ class BufferTest(unittest.TestCase):
     def test_minibatches_cover_every_step_once(self):
         buffer = Buffer(steps=4, games=3)
         buffer.action[:] = np.arange(12).reshape(4, 3)
+        buffer.filled[:] = True
         buffer.finish(np.zeros(3, np.float32), 0.9, 0.5)
         seen = np.concatenate([batch["action"] for batch in buffer.minibatches(5, np.random.default_rng(0))])
         self.assertEqual(sorted(seen), list(range(12)))
         np.testing.assert_allclose(buffer.returns, buffer.advantage + buffer.value)
+
+    def test_minibatches_skip_steps_the_rollout_did_not_fill(self):
+        buffer = Buffer(steps=4, games=2)
+        buffer.action[:] = np.arange(8).reshape(4, 2)
+        buffer.filled[:] = True
+        buffer.filled[2:, 1] = False  # a draining game whose run ended after two steps
+        buffer.finish(np.zeros(2, np.float32), 0.9, 0.5)
+        batches = [batch["action"] for batch in buffer.minibatches(3, np.random.default_rng(0))]
+        self.assertEqual([len(batch) for batch in batches], [3, 3])  # no empty batch for the unfilled steps
+        self.assertEqual(sorted(np.concatenate(batches)), [0, 1, 2, 3, 4, 6])
 
 
 if __name__ == "__main__":

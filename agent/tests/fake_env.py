@@ -28,6 +28,7 @@ KIND_INDEX = Vocabulary.load().index("KIND", "event")
 class FakeEnvironment:
     def __init__(self, seed: int = 0, name: str = "fake", fail_every: int = 0, truncate_at: int = 0) -> None:
         self.name, self.fail_every, self.truncate_at = name, fail_every, truncate_at
+        self.peak_memory = 0
         self._kind_index = KIND_INDEX
         self._rng = random.Random(seed)
         self._episodes = 0

@@ -37,7 +37,7 @@ python -m agent.random_agent --games 4 --runs 120 --seed 41
 seed=41
 game=game0 seed=WSLL2KN1WJ outcome=loss floor=5 steps=44 per_second=13.1
 ...
-agent_seed=41 games=4 runs=120 steps=6671 steps_per_second=27.7 per_game=6.9 runs_per_hour=1794 mean_floor=5.1 max_floor=13 launch_seconds=57 out=runs\20261010-230057
+agent_seed=41 games=4 runs=120 steps=6723 steps_per_second=49.0 per_game=12.3 runs_per_hour=3150 mean_floor=5.1 max_floor=12 launch_seconds=52 out=runs\20261013-204342
 largest choices=20 deck=20 discard=20 ...
 ```
 
@@ -58,12 +58,13 @@ When the game updates, `python -m agent.env.vocabulary --update` appends the new
 `python -m agent.ppo.train` trains a PPO policy on several games at once. Each training run gets its own folder, `runs/<time>/`, holding its record (`config.json`: every setting, the seed, the git commit, the game build and the vocabulary, schema, protocol and reward identities), one row of metrics per update (`metrics.csv`), its latest checkpoint (`checkpoint.pt`), its log (`train.log`, which also shows each game's time per update), and the games' logs, traces and `summary.jsonl`.
 
 ```
-python -m agent.ppo.train --games 4
+python -m agent.ppo.train --games 6
 python -m agent.ppo.train --resume runs/<time>
 ```
 
 - Every setting is a flag (`--help` lists them with their defaults; `agent/ppo/config.py` gives the reason for each). `--games` is set per machine, like the speed command's.
 - A checkpoint is saved every `--checkpoint-every` updates and whenever training stops: at `--total-steps` (default 10 million, the roadmap's stop-and-look point), on Ctrl+C, on an error, or when more than `--failure-budget` of the last `--failure-window` runs failed. A single failed run is logged and training carries on.
+- To stop once the games' runs have finished, create a file named `stop` in the training run's folder (`runs/<time>/stop`). From the next update no game starts a new run; training goes on with the runs in progress and, once every game is idle, stops with a checkpoint and removes the file. Ctrl+C stops at once instead, dropping the runs in progress.
 - `--resume` continues from the latest checkpoint with the same settings, losing at most the steps since it. A checkpoint made by code with another vocabulary, observation schema, protocol or reward refuses to load and names the difference; a vocabulary that only grew loads, with new embedding rows.
 - Training runs on the CPU by default. `--device cuda` uses a GPU once a CUDA build of torch is installed (see pytorch.org for the command matching your GPU).
 

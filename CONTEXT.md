@@ -33,9 +33,10 @@ Each term means exactly this in code, specs, and docs. Use these words. When a n
 - **Trace**: the full record of every decision, action, outcome reward and reward term score in a run (`.trace.jsonl`), kept for evaluation runs, failed runs and a sample of training runs.
 - **Summary row**: what every other training run keeps instead of a trace: seed, outcome, floor, steps, reward term results, failure reason, and the action indices that replay it.
 - **Game copy**: a copy of the game folder for one build, made by `tools/copy-game.sh` and never updated by Steam, which training and evaluation launch.
-- **Run mode**: the mod's mode for unattended runs: the agent makes every decision, unlocks are fixed to everything unlocked, and nothing is saved.
+- **Run mode**: the mod's mode for unattended runs: the agent makes every decision, unlocks are fixed to everything unlocked, nothing is saved, every loaded resource is kept, asset loads force no garbage collection, and the frame rate has no cap.
 - **Vocabulary**: every ID and named value of the targeted game build, each with its own index for the observation, identified by a content hash.
 - **Training run**: one training session, from start to stop, with its record in `runs/<training run>/`. Not a run of the game.
+- **Draining**: a training run after a stop is requested (a `stop` file in its folder): no game starts a new run, and training stops once every game's run in progress has ended.
 - **Rollout**: the batch of steps collected under the current policy before one PPO update.
 - **Update**: one PPO optimisation over a rollout: several epochs of minibatches. Training time is counted in steps, and its metrics in rows of one per update.
 - **Failure budget**: the most failed runs allowed among a training run's most recent runs; past it, training stops loudly, since failures that cluster would teach the policy to seek them out.

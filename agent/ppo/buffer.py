@@ -65,7 +65,7 @@ class Buffer:
         count = self.steps * self.games
         flat = lambda array: array.reshape(count, *array.shape[2:])
         order = rng.permutation(np.flatnonzero(flat(self.filled)))
-        for start in range(0, count, size):
+        for start in range(0, len(order), size):
             rows = order[start:start + size]
             yield {
                 "obs": {key: flat(array)[rows] for key, array in self.obs.items()},

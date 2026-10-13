@@ -68,8 +68,9 @@ class BufferTest(unittest.TestCase):
         buffer.filled[:] = True
         buffer.filled[2:, 1] = False  # a draining game whose run ended after two steps
         buffer.finish(np.zeros(2, np.float32), 0.9, 0.5)
-        seen = np.concatenate([batch["action"] for batch in buffer.minibatches(3, np.random.default_rng(0))])
-        self.assertEqual(sorted(seen), [0, 1, 2, 3, 4, 6])
+        batches = [batch["action"] for batch in buffer.minibatches(3, np.random.default_rng(0))]
+        self.assertEqual([len(batch) for batch in batches], [3, 3])  # no empty batch for the unfilled steps
+        self.assertEqual(sorted(np.concatenate(batches)), [0, 1, 2, 3, 4, 6])
 
 
 if __name__ == "__main__":

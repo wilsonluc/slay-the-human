@@ -18,10 +18,11 @@ class Config:
     # update's approximate KL over its last epoch: 2.5e-4 gave 0.003, 5e-4 0.007, 1e-3 0.022 (clip fraction 0.03, 0.08,
     # 0.19). The lowest in PPO's usual 0.005 to 0.03.
     lr: float = 5e-4
-    # Steps per game per rollout: about 1,000 a rollout with 4 games, several random runs or part of a long one.
+    # Steps per game per rollout: about 1,500 a rollout with 6 games, several random runs or part of a long one.
     steps: int = 256
-    # The speed measurement's best rate per game; set per machine (about one per CPU core at most).
-    games: int = 4
+    # The fastest measured in training on an 8-core machine (spec 012): 4 games 43 steps/s, 6 games 53 (random actions:
+    # 6 games 61, 8 games 62). Set per machine.
+    games: int = 6
     # The usual number of passes over a rollout, and minibatch size.
     epochs: int = 4
     minibatch: int = 256

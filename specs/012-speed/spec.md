@@ -1,6 +1,6 @@
 # 012: Faster games
 
-Status: draft
+Status: approved
 
 ## Problem
 

@@ -227,9 +227,10 @@ class Trainer:
         self._snapshot = copy.deepcopy(self.state())
         log.info("update %d: step %d, %.1f steps/s, %d runs ended, mean floor %s, failed %d", self.updates, self.steps,
                  row["steps_per_second"], row["runs"], row["mean_floor"], row["failed_runs"])
-        # Per game: seconds in the game's steps, in the policy, and waiting for the slowest game.
+        # Per game: seconds in the game's steps, in the policy, and waiting for the slowest game; the most memory it held.
         log.info("update %d timing: %s", self.updates, " ".join(
             f"{env.name}=game {t['game']:.0f}s/policy {t['policy']:.0f}s/waited {t['waited']:.0f}s"
+            f"/peak {env.peak_memory / 2**30:.1f} GB"
             for env, t in zip(self.envs, self.collector.timing)))
         failures = [outcome for outcome in self.window if outcome is not None]
         if len(failures) > self.config.failure_budget:

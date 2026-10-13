@@ -58,6 +58,8 @@ class Environment:
         self.time_scale, self.game_command, self.name = time_scale, game_command, name
         self.memory_limit = int(memory_limit_gb * 2**30)
         self._memory_failure: str | None = None
+        # The most memory any of this environment's games has held, in bytes (spec 012: kept resources grow it).
+        self.peak_memory = 0
         self.vocabulary = vocabulary or Vocabulary.load()
         self.encoder = Encoder(self.vocabulary)
         self.out.mkdir(parents=True, exist_ok=True)
@@ -210,6 +212,7 @@ class Environment:
         then fails like any game that stops, with this as its reason."""
         while game.poll() is None:
             used = games.memory(game)
+            self.peak_memory = max(self.peak_memory, used)
             if used > self.memory_limit:
                 self._memory_failure = f"the game used {used / 2**30:.1f} GB, past the {self.memory_limit / 2**30:g} GB limit"
                 log.error("%s: %s; stopping it", self.name, self._memory_failure)

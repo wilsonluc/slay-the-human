@@ -20,11 +20,13 @@ class Config:
     # last epoch: 2.5e-4 gave 0.003, 5e-4 0.007, 1e-3 0.022 (clip fraction 0.03, 0.08, 0.19). The lowest in PPO's usual
     # 0.005 to 0.03.
     lr: float = 5e-4
-    # Steps per game per rollout: about 1,500 a rollout with 6 games, several random runs or part of a long one.
+    # Steps per game per rollout: about 1,000 a rollout with 4 games, several random runs or part of a long one.
     steps: int = 256
-    # The fastest measured in training on an 8-core machine (spec 012): 4 games 43 steps/s, 6 games 53 (random actions:
-    # 6 games 61, 8 games 62). Set per machine.
-    games: int = 6
+    # Four, though six are faster on an 8-core machine (spec 012: 4 games 43 steps/s, 6 games 53 in training). With six,
+    # each update's rollout is half as large again, and all three six-game training runs drifted into skipping card
+    # rewards by 300,000 steps; the four-game runs kept taking them (spec 013). Raise it only with a training run that
+    # shows it learns as well.
+    games: int = 4
     # The usual number of passes over a rollout, and minibatch size.
     epochs: int = 4
     minibatch: int = 256

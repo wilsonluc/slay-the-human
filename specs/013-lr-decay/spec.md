@@ -1,6 +1,6 @@
 # 013: Learning rate that decays
 
-Status: draft
+Status: approved
 
 ## Problem
 

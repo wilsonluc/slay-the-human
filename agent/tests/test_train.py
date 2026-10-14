@@ -10,7 +10,7 @@ import torch
 from agent.checkpoint import TrainingRun
 from agent.env.vocabulary import Vocabulary
 from agent.ppo.config import Config, parse
-from agent.ppo.train import STOP_FILE, FailureBudget, Trainer, by_kind
+from agent.ppo.train import STOP_FILE, FailureBudget, Trainer, by_kind, learning_rate
 from agent.tests.fake_env import FakeEnvironment
 
 # Columns that depend on the machine's speed, not on the seed.
@@ -42,6 +42,12 @@ class EntropyByKindTest(unittest.TestCase):
         self.assertAlmostEqual(float(bonus), 0.5)
         bonus.backward()
         self.assertAlmostEqual(float(entropy.grad[:99].sum()), float(entropy.grad[99]))
+
+
+class LearningRateTest(unittest.TestCase):
+    def test_it_falls_linearly_to_zero_at_the_step_budget(self):
+        config = small(lr=4e-4, total_steps=1000)
+        self.assertEqual([learning_rate(config, steps) for steps in (0, 500, 1000, 1200)], [4e-4, 2e-4, 0.0, 0.0])
 
 
 class TrainerTest(unittest.TestCase):
@@ -78,6 +84,11 @@ class TrainerTest(unittest.TestCase):
         trainer = self.trainer(small(games=3, total_steps=300))
         trainer.train()
         self.assertEqual(rows(trainer.run)[0]["runs"], "3")
+
+    def test_each_update_uses_and_reports_the_rate_for_the_steps_taken(self):
+        trainer = self.trainer(small(lr=4e-4, total_steps=400))
+        trainer.train()
+        self.assertEqual([float(row["learning_rate"]) for row in rows(trainer.run)], [4e-4, 2e-4])
 
     def test_training_stops_at_the_step_budget_with_a_checkpoint(self):
         trainer = self.trainer(small(total_steps=400))

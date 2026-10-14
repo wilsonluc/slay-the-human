@@ -6,8 +6,8 @@ Where the project is going, in phases. A phase is a result the agent reaches, ch
 
 | Phase | Goal | Done when | Needs |
 |---|---|---|---|
-| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-010 (done: every decision goes to the agent; the training environment; PPO; a reward that pays for progress; evaluation and generations); a results dashboard comparing generations (013) |
-| 1.0 | Ironclad, ascension 0 | Evaluation win rate ≥ target | Phase 0; exploration on every decision kind and credit for bosses (011); uncapped frame rate (012) |
+| 0 | The agent can learn | Every decision in a run goes to the agent, and a training run's agent beats the random agent's mean floor on the evaluation seeds by a set margin within a set number of steps | Specs 001-010 (done: every decision goes to the agent; the training environment; PPO; a reward that pays for progress; evaluation and generations); a results dashboard comparing generations (014) |
+| 1.0 | Ironclad, ascension 0 | Evaluation win rate ≥ target | Phase 0; exploration on every decision kind and credit for bosses (011); uncapped frame rate (012); a learning rate that decays over the run (013) |
 | 1.1 - 1.10 | Ironclad, ascension 1 to 10 | Evaluation win rate ≥ target, per level | Ascension support |
 | 2 | Decided at the end of phase 1 | Recorded below as a decision | |
 

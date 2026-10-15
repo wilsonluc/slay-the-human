@@ -2,7 +2,7 @@
 
 How the mod and the Python agent talk during an unattended run. This file is the protocol's single definition: the mod (`mod/Bridge.cs` and the `mod/Agent*.cs` decisions) and the agent (`agent/bridge.py`) follow it, and `tools/test.sh` checks both use the version below.
 
-Protocol version: **4**
+Protocol version: **5**
 
 Change the version whenever a message changes shape, in the same PR as both sides.
 
@@ -21,8 +21,8 @@ Change the version whenever a message changes shape, in the same PR as both side
 Sent by each side right after connecting. If the versions differ, the side that notices closes the connection and fails with both versions in its error. The mod's also names the game it runs, from the game's `release_info.json`.
 
 ```json
-{"type": "hello", "protocol": 4, "game_version": "v0.107.1", "game_commit": "59260271"}
-{"type": "hello", "protocol": 4}
+{"type": "hello", "protocol": 5, "game_version": "v0.107.1", "game_commit": "59260271"}
+{"type": "hello", "protocol": 5}
 ```
 
 ### ready (mod to agent)
@@ -87,6 +87,9 @@ Every card, wherever it appears (deck, hand, piles, card rewards, special card r
 | `type` | string | `Attack`, `Skill`, `Power`, `Status`, `Curse` or `Quest` |
 | `rarity` | string | the game's rarity, such as `Basic`, `Common`, `Rare` |
 | `upgrade` | int | upgrade level, 0 when not upgraded; some cards upgrade more than once |
+| `cost` | int | energy cost with all modifiers; negative when the card has no energy cost |
+| `costs_x` | bool | an X-cost card, which spends all energy |
+| `star_cost` | int | star cost with modifiers; negative when none |
 | `vars` | object | each of the card's numbers by name, as it is now (`{"Damage": 9, "Block": 0, ...}`), so a card that grew is seen grown |
 | `keywords` | array | the card's keywords from every source, sorted, such as `Exhaust`, `Ethereal`, `Retain` |
 | `enchantment`, `affliction` | object or null | `{"id", "amount"}` |
@@ -95,9 +98,6 @@ In hand, a card also has:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `cost` | int | energy cost with all modifiers; negative when the card has no energy cost |
-| `costs_x` | bool | an X-cost card, which spends all energy |
-| `star_cost` | int | star cost with modifiers; negative when none |
 | `target` | string | the game's target type, such as `AnyEnemy`, `Self`, `AllEnemies`, `None` |
 | `playable` | bool | the game would let the card be played now |
 | `preview` | object | each number after modifiers, as the card in hand shows it with no target |

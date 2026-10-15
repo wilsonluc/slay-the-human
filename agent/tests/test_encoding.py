@@ -13,8 +13,14 @@ from agent.env.encoding import Encoder, EncodingError
 from agent.env.vocabulary import Vocabulary
 
 RECORDINGS = Path(__file__).with_name("recordings") / "decisions.jsonl"
-CARD_FIELDS = {"id", "type", "rarity", "upgrade", "vars", "keywords", "enchantment", "affliction"}
-HAND_FIELDS = CARD_FIELDS | {"cost", "costs_x", "star_cost", "target", "playable", "preview"}
+CARD_FIELDS = {"id", "type", "rarity", "upgrade", "cost", "costs_x", "star_cost", "vars", "keywords", "enchantment",
+               "affliction"}
+HAND_FIELDS = CARD_FIELDS | {"target", "playable", "preview"}
+# Where a card's cost and copies sit among its floats, and the run's sizes among the global numbers.
+COST = 3 + encoding.NUMBERS + 2
+COPIES = COST + 5
+DECK_SIZE, HAND_SIZE, DRAW_SIZE, DISCARD_SIZE, EXHAUST_SIZE, POTIONS_HELD, POTION_SLOTS = range(
+    encoding.GLOBAL_FLOATS - 7, encoding.GLOBAL_FLOATS)
 
 
 def recordings() -> list[dict]:
@@ -107,6 +113,10 @@ class EncodingTest(unittest.TestCase):
                 select = decision["state"]["card_select"]
                 expected = len(select["cards"]) + (select["min"] == 0)
                 self.assertEqual(int(mask.sum()), expected)
+            elif decision["kind"] == "reward":
+                # Proceeding waits while a card reward or gold can be taken (the recording offers one).
+                proceed = next(i for i, a in enumerate(decision["actions"]) if a["kind"] == "proceed")
+                self.assertEqual(sorted(legal.values()), [i for i in range(len(decision["actions"])) if i != proceed])
             else:
                 self.assertEqual(int(mask.sum()), len(decision["actions"]))
                 self.assertEqual(sorted(legal.values()), list(range(len(decision["actions"]))))
@@ -160,3 +170,123 @@ class EncodingTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def recorded(kind: str) -> dict:
+    return copy.deepcopy(next(d for d in recordings() if d["kind"] == kind))
+
+
+class DeckBuildingTest(unittest.TestCase):
+    """Spec 014: the rewards screen, and what the policy sees of its deck, piles, cards and potions."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.encoder = Encoder(Vocabulary.load())
+
+    def legal(self, decision: dict) -> dict:
+        return self.encoder.actions(decision, self.encoder.living(decision))
+
+    def test_proceeding_waits_until_no_card_reward_or_gold_is_left(self):
+        decision = recorded("reward")
+        rewards = decision["state"]["reward"]["rewards"]
+        self.assertTrue({"card", "gold"} & {r["type"] for r in rewards}, "the recording offers a card reward or gold")
+        self.assertNotIn(encoding.segment("proceed"), self.legal(decision))
+        potion = {"type": "potion", "id": "FIRE_POTION", "amount": None, "group": None, "card": None}
+        decision["state"]["reward"]["rewards"] = [potion]
+        decision["actions"] = [{"kind": "take", "reward": 0}, {"kind": "proceed"}]
+        self.assertIn(encoding.segment("proceed"), self.legal(decision), "a potion may be left")
+        decision["state"]["reward"]["rewards"], decision["actions"] = [], [{"kind": "proceed"}]
+        self.assertIn(encoding.segment("proceed"), self.legal(decision), "nothing left")
+
+    def test_a_card_reward_no_longer_offered_does_not_hold_the_screen(self):
+        # A skipped card reward stays listed but is not offered again.
+        decision = recorded("reward")
+        rewards = decision["state"]["reward"]["rewards"]
+        decision["actions"] = [a for a in decision["actions"]
+                               if a["kind"] != "take" or rewards[a["reward"]]["type"] not in ("card", "gold")]
+        self.assertIn(encoding.segment("proceed"), self.legal(decision))
+
+    def test_the_card_reward_screen_keeps_skip(self):
+        decision = recorded("card_reward")
+        skip = decision["state"]["card_reward"]["alternatives"].index("Skip")
+        self.assertIn(encoding.segment("option", skip), self.legal(decision))
+
+    def test_copies_and_deck_size(self):
+        decision = recorded("map")
+        deck = decision["state"]["run"]["deck"]
+        first = deck[0]
+        copies = sum(card["id"] == first["id"] and card["upgrade"] == first["upgrade"] for card in deck)
+        obs, _ = self.encoder.encode(decision)
+        self.assertAlmostEqual(obs["deck"][0, COPIES], encoding.slog(copies), places=5)
+        self.assertAlmostEqual(obs["global"][DECK_SIZE], encoding.slog(len(deck)), places=5)
+        # The same deck with every card doubled: the same mix, twice the copies and the size.
+        decision["state"]["run"]["deck"] = deck + copy.deepcopy(deck)
+        doubled, _ = self.encoder.encode(decision)
+        self.assertAlmostEqual(doubled["deck"][0, COPIES], encoding.slog(2 * copies), places=5)
+        self.assertAlmostEqual(doubled["global"][DECK_SIZE], encoding.slog(2 * len(deck)), places=5)
+
+    def test_an_upgraded_copy_counts_apart(self):
+        decision = recorded("map")
+        deck = decision["state"]["run"]["deck"]
+        decision["state"]["run"]["deck"] = deck + [dict(deck[0], upgrade=deck[0]["upgrade"] + 1)]
+        obs, _ = self.encoder.encode(decision)
+        self.assertAlmostEqual(obs["deck"][len(deck), COPIES], encoding.slog(1), places=5)
+
+    def test_offered_cards_count_the_copies_the_deck_holds(self):
+        decision = recorded("card_reward")
+        offered = decision["state"]["card_reward"]["cards"][0]
+        held = sum(card["id"] == offered["id"] and card["upgrade"] == offered["upgrade"]
+                   for card in decision["state"]["run"]["deck"])
+        decision["state"]["run"]["deck"] += [copy.deepcopy(offered), copy.deepcopy(offered)]
+        obs, _ = self.encoder.encode(decision)
+        self.assertAlmostEqual(obs["choices"][0, COPIES], encoding.slog(held + 2), places=5)
+
+    def test_the_hand_and_combat_piles_have_their_sizes(self):
+        decision = recorded("combat")
+        combat = decision["state"]["combat"]
+        obs, _ = self.encoder.encode(decision)
+        for index, pile in [(HAND_SIZE, "hand"), (DRAW_SIZE, "draw"), (DISCARD_SIZE, "discard"),
+                            (EXHAUST_SIZE, "exhaust")]:
+            self.assertAlmostEqual(obs["global"][index], encoding.slog(len(combat[pile])), places=5, msg=pile)
+
+    def test_a_full_potion_belt_and_one_with_a_free_slot_differ(self):
+        decision = copy.deepcopy(next(d for d in recordings() if any(d["state"]["run"]["potions"])))
+        potion = next(p for p in decision["state"]["run"]["potions"] if p)
+        decision["state"]["run"]["potions"] = [dict(potion), dict(potion), None]
+        free, _ = self.encoder.encode(decision)
+        decision["state"]["run"]["potions"] = [dict(potion), dict(potion), dict(potion)]
+        full, _ = self.encoder.encode(decision)
+        self.assertAlmostEqual(free["global"][POTIONS_HELD], encoding.slog(2), places=5)
+        self.assertAlmostEqual(full["global"][POTIONS_HELD], encoding.slog(3), places=5)
+        self.assertAlmostEqual(free["global"][POTION_SLOTS], encoding.slog(3), places=5)
+        self.assertAlmostEqual(full["global"][POTION_SLOTS], encoding.slog(3), places=5)
+
+    def test_cards_outside_the_hand_have_their_cost(self):
+        decision = recorded("card_reward")
+        card = decision["state"]["card_reward"]["cards"][0]
+        card.update(cost=2, costs_x=False, star_cost=-1)
+        obs, _ = self.encoder.encode(decision)
+        np.testing.assert_allclose(obs["choices"][0, COST:COST + 5], [encoding.slog(2), 0, 0, 1, 0], rtol=1e-6)
+        card.update(cost=-1, costs_x=True)
+        obs, _ = self.encoder.encode(decision)
+        np.testing.assert_allclose(obs["choices"][0, COST:COST + 5], [0, 1, 0, 0, 0])
+        deck_card = decision["state"]["run"]["deck"][0]
+        self.assertAlmostEqual(obs["deck"][0, COST], encoding.slog(max(deck_card["cost"], 0)), places=5)
+
+    def test_every_number_of_a_card_is_kept(self):
+        numbers = {"Damage": 6, "Block": 0, "CalculationBase": 1, "ExtraDamage": 2, "CalculatedDamage": 3, "Cards": 4}
+        self.assertEqual(encoding._numbers(numbers), [6, 0, 1, 2, 3, 4, 0, 0])
+        too_many = {f"N{i}": i for i in range(encoding.NUMBERS + 1)}
+        with self.assertRaisesRegex(EncodingError, f"past the {encoding.NUMBERS} the observation holds"):
+            encoding._numbers(too_many)
+
+    def test_a_special_card_reward_is_seen_as_a_card(self):
+        decision = recorded("reward")
+        card = copy.deepcopy(decision["state"]["run"]["deck"][0])
+        rewards = decision["state"]["reward"]["rewards"]
+        rewards.append({"type": "special_card", "id": card["id"], "amount": None, "group": None, "card": card})
+        obs, _ = self.encoder.encode(decision)
+        slot = len(rewards) - 1
+        self.assertEqual(obs["reward_cards_present"].sum(), 1.0)
+        self.assertEqual(obs["reward_cards_present"][slot], 1.0)
+        self.assertEqual(obs["reward_cards_ids"][slot, 0], obs["deck_ids"][0, 0])

@@ -60,6 +60,14 @@ internal static class AgentEvent
         for (var choices = 0; choices < MaxChoices; choices++)
         {
             ct.ThrowIfCancellationRequested();
+            // A won combat that does not hand back to its event (one in the combat layout, such as Punch Off) ends the
+            // event. Its rewards screen leads to the map, but the screen and the event room both stay up after it, so
+            // draining it here would offer it again and again; AutoSlay's screen loop after the room answers it once.
+            if (!CombatStarting && RunManager.Instance.DebugOnlyGetState()?.CurrentRoom is
+                CombatRoom { ShouldResumeParentEventAfterCombat: false })
+            {
+                return;
+            }
             if (ScreenOpen && Alive(eventRoom))
             {
                 await RunLoop.DrainScreensAsync(ct);

@@ -13,7 +13,7 @@ the observation, and the environment sends the picks once confirmed or at the ma
 
 import hashlib
 import json
-from collections import deque
+from collections import Counter, deque
 
 import numpy as np
 
@@ -69,14 +69,20 @@ ACTION_COUNT = _offset
 KINDS = ["combat", "map", "reward", "card_reward", "rest", "card_select", "event", "shop", "treasure", "bundle",
          "crystal_sphere"]
 
-# A card's numbers: the three most cards have, then the first other one ("magic"), in the game's order.
-CARD_FLOATS = 6 + KEYWORDS  # upgrade, damage, block, magic, enchantment amount, affliction amount, keywords
-HAND_FLOATS = 9  # cost, X cost, star cost, playable, damage, block and magic after modifiers, has cost, has star cost
-GLOBAL_FLOATS = 22
+# A card's numbers: damage and block, which most cards have, then up to NUMBERS others in the game's order (no card in
+# the traces had more than 4).
+NUMBERS = 6
+# upgrade, damage, block, the other numbers, enchantment amount, affliction amount, cost, X cost, star cost, has cost,
+# has star cost, copies of the card (same ID and upgrade) in the deck, keywords
+CARD_FLOATS = 3 + NUMBERS + 2 + 5 + 1 + KEYWORDS
+HAND_FLOATS = 3 + NUMBERS  # playable, damage, block and the other numbers after modifiers
+# The run's and the decision's numbers, then the sizes of the deck, hand, draw, discard and exhaust piles, the potions
+# held and the potion belt's slots.
+GLOBAL_FLOATS = 22 + 7
 ROUTE_FLOATS = 8
 
 # Raised whenever a scaling rule or a feature changes without changing a shape, so the schema hash changes with it.
-SCHEMA_REVISION = 1
+SCHEMA_REVISION = 2
 
 
 def _set(name: str, size: int, ids: int | None = None, floats: int | None = None) -> dict:
@@ -107,6 +113,7 @@ OBSERVATION: dict[str, tuple[tuple[int, ...], str]] = {
     "intents": ((ENEMIES, INTENTS, 2), "float32"),
     "intents_present": ((ENEMIES, INTENTS), "float32"),
     **_set("rewards", REWARDS, 2, 3),
+    **_set("reward_cards", REWARDS, 5, CARD_FLOATS),
     **_set("choices", CHOICES, 5, CARD_FLOATS + 2),
     **_set("options", OPTIONS, 2, 4),
     **_set("shop", SHOP, 2, 3),
@@ -159,6 +166,7 @@ class Encoder:
     def __init__(self, vocabulary: Vocabulary) -> None:
         self.vocabulary = vocabulary
         self.largest: dict[str, int] = {}
+        self._copies: Counter = Counter()  # the deck's cards by (ID, upgrade), for the decision being encoded
         keyword_keys = [key for key in vocabulary.keys if key.startswith("KEYWORD.")]
         self._keywords = {key.split(".", 1)[1]: i for i, key in enumerate(keyword_keys)}
         if len(self._keywords) > KEYWORDS:
@@ -181,13 +189,17 @@ class Encoder:
     # Cards
 
     def _card(self, card: dict) -> tuple[list[int], list[float]]:
-        """A card's IDs (card, type, rarity, enchantment, affliction) and numbers."""
+        """A card's IDs (card, type, rarity, enchantment, affliction) and numbers, with how many copies of it the deck
+        holds."""
         enchantment, affliction = card.get("enchantment"), card.get("affliction")
         ids = [self._id("CARD", card["id"]), self._id("CARD_TYPE", card["type"]), self._id("CARD_RARITY", card["rarity"]),
                self._id("ENCHANTMENT", enchantment and enchantment["id"]),
                self._id("AFFLICTION", affliction and affliction["id"])]
+        cost, star = card["cost"], card["star_cost"]
         floats = [card["upgrade"], *(slog(value) for value in _numbers(card["vars"])),
-                  slog(enchantment and enchantment["amount"]), slog(affliction and affliction["amount"])]
+                  slog(enchantment and enchantment["amount"]), slog(affliction and affliction["amount"]),
+                  slog(max(cost, 0)), float(card["costs_x"]), slog(max(star, 0)), float(cost >= 0), float(star >= 0),
+                  slog(self._copies[(card["id"], card["upgrade"])])]
         keywords = [0.0] * KEYWORDS
         for keyword in card["keywords"]:
             if keyword not in self._keywords:
@@ -223,6 +235,7 @@ class Encoder:
         run, combat = state["run"], state.get("combat")
         own = state.get(kind) if kind != "map" else state["map"]
 
+        self._copies = Counter((card["id"], card["upgrade"]) for card in run["deck"])
         self._cards(obs, "deck", run["deck"], DECK)
         self._relics(obs, run["relics"])
         self._potions(obs, run["potions"])
@@ -336,6 +349,8 @@ class Encoder:
             obs["rewards"][i] = [slog(reward["amount"]), float(reward["group"] is not None),
                                  (reward["group"] or 0) / REWARDS]
             obs["rewards_present"][i] = 1
+        # A special card reward's card, in the reward's slot.
+        self._cards(obs, "reward_cards", [reward.get("card") for reward in rewards], REWARDS)
 
     def _choice_cards(self, kind, own) -> tuple[list[dict], list[int]]:
         """The cards offered to choose from, and for a bundle screen the bundle each belongs to."""
@@ -408,6 +423,9 @@ class Encoder:
             slog(own.get("divinations")) if kind == "crystal_sphere" else 0.0,
             float(kind == "treasure" and own["relic"] is not None),
             float(run["second_boss"] is not None), float(len(picked) > 0),
+            slog(len(run["deck"])), *(slog(len(combat[pile])) if combat else 0.0
+                                      for pile in ("hand", "draw", "discard", "exhaust")),
+            slog(sum(potion is not None for potion in run["potions"])), slog(len(run["potions"])),
         ]
         assert len(floats) == GLOBAL_FLOATS
         obs["global_ids"] = np.array(ids, np.int64)
@@ -436,6 +454,13 @@ class Encoder:
             if index in result:
                 raise EncodingError(f"two of the game's actions map to {describe(index)}: {action}")
             result[index] = answer
+        if kind == "reward":
+            # Leaving a card reward unopened skips its cards unseen, which its own Skip does with them in view, and gold
+            # is never worth leaving; so proceeding waits until neither is left (spec 014).
+            rewards = state["reward"]["rewards"]
+            if any(action["kind"] == "take" and rewards[action["reward"]]["type"] in ("card", "gold")
+                   for action in decision["actions"]):
+                result.pop(segment("proceed"), None)
         return result
 
     def _action_index(self, kind, state, action, slots) -> int:
@@ -493,16 +518,16 @@ def _option_text(option: dict) -> str:
 
 
 def _numbers(variables: dict) -> list[float]:
-    """Damage, block, and the first other number in the game's order."""
+    """Damage, block, and every other number in the game's order, padded to NUMBERS."""
     others = [value for name, value in variables.items() if name not in ("Damage", "Block")]
-    return [variables.get("Damage", 0), variables.get("Block", 0), others[0] if others else 0]
+    if len(others) > NUMBERS:
+        raise EncodingError(f"a card has {len(others)} numbers besides damage and block, past the {NUMBERS} the "
+                            f"observation holds: {sorted(variables)}")
+    return [variables.get("Damage", 0), variables.get("Block", 0), *others, *[0] * (NUMBERS - len(others))]
 
 
 def _hand_numbers(card: dict) -> list[float]:
-    cost, star = card["cost"], card["star_cost"]
-    preview = _numbers(card.get("preview", {}))
-    return [slog(max(cost, 0)), float(card["costs_x"]), slog(max(star, 0)), float(card["playable"]),
-            *(slog(value) for value in preview), float(cost >= 0), float(star >= 0)]
+    return [float(card["playable"]), *(slog(value) for value in _numbers(card.get("preview", {})))]
 
 
 def _routes(points: list[dict], children: list[list[int]]) -> list[list[int]]:

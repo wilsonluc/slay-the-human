@@ -31,8 +31,8 @@ internal static class GameState
         RunManager.Instance.DebugOnlyGetState() ?? throw new InvalidOperationException("no run in progress");
 
     /// <summary>
-    /// A card: what it is, its numbers now (so a card that grew is seen grown), keywords, enchantment and affliction. In
-    /// hand, also what it costs, whether it can be played, and its numbers after modifiers as the card in hand shows them.
+    /// A card: what it is, what it costs, its numbers now (so a card that grew is seen grown), keywords, enchantment and
+    /// affliction. In hand, also whether it can be played, and its numbers after modifiers as the card in hand shows them.
     /// </summary>
     public static JsonObject Card(CardModel card, bool inHand = false)
     {
@@ -40,6 +40,9 @@ internal static class GameState
         {
             ["id"] = card.Id.Entry, ["type"] = card.Type.ToString(), ["rarity"] = card.Rarity.ToString(),
             ["upgrade"] = card.CurrentUpgradeLevel,
+            ["cost"] = card.EnergyCost.GetWithModifiers(CostModifiers.All),
+            ["costs_x"] = card.EnergyCost.CostsX,
+            ["star_cost"] = StarCost(card),
             ["vars"] = Vars(card.DynamicVars.Values, v => v.BaseValue),
             ["keywords"] = new JsonArray(card.Keywords.Select(keyword => keyword.ToString())
                 .OrderBy(name => name, StringComparer.Ordinal).Select(name => (JsonNode)name).ToArray()),
@@ -52,9 +55,6 @@ internal static class GameState
         };
         if (inHand)
         {
-            result["cost"] = card.EnergyCost.GetWithModifiers(CostModifiers.All);
-            result["costs_x"] = card.EnergyCost.CostsX;
-            result["star_cost"] = card.GetStarCostWithModifiers();
             result["target"] = card.TargetType.ToString();
             result["playable"] = card.CanPlay(out _, out _);
             // The game's own preview for a card in hand with no target, as its card UI computes it.
@@ -63,6 +63,17 @@ internal static class GameState
             result["preview"] = Vars(card.DynamicVars.Values, v => v.PreviewValue);
         }
         return result;
+    }
+
+    /// <summary>A canonical card refuses its owner, and an X star cost reads the owner's stars, which a card offered as a
+    /// reward or in a shop does not have yet.</summary>
+    private static int StarCost(CardModel card)
+    {
+        if (card.IsCanonical)
+        {
+            return card.CanonicalStarCost;
+        }
+        return card.HasStarCostX && card.Owner is null ? 0 : card.GetStarCostWithModifiers();
     }
 
     private static JsonObject Vars(IEnumerable<DynamicVar> vars, Func<DynamicVar, decimal> value)

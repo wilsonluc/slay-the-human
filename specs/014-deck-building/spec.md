@@ -1,6 +1,6 @@
 # 014: Deck building
 
-Status: draft
+Status: approved
 
 ## Problem
 
@@ -15,7 +15,9 @@ Status: draft
 
 The card choice itself works: once the agent sees the cards, it picks or skips them, and late in the good run it skips 41% of the time. The collapse is in the decision before it, which skips every card unseen. Spec 011 left the rewards screen out of its exploration check because its choices "have one right order", and all three six-game runs fell into skipping that way (spec 013). The same screen also lets the agent leave gold behind: late in spec 013's result run it did so 986 times.
 
-**The policy cannot see its deck's size or how many copies it holds.** The model pools the deck's cards into its state with their mean and their maximum (`agent/ppo/model.py`), and both are blind to counts: a deck of Strike and Bash and a deck of two Strikes and two Bashes give the same state, and nothing else in the observation gives the deck's size. Whether to take a card depends on both: a card thins or bloats the deck by its size, and a third copy is worth less than a first. No amount of training recovers what the observation leaves out. The other card sets (hand, draw pile, discard pile, exhaust pile, the cards offered) are pooled the same way, so the draw pile's size is missing in combat too.
+**The policy cannot see its deck's size or how many copies it holds.** The model pools the deck's cards into its state with their mean and their maximum (`agent/ppo/model.py`), and both are blind to counts: a deck of Strike and Bash and a deck of two Strikes and two Bashes give the same state, and nothing else in the observation gives the deck's size. Whether to take a card depends on both: a card thins or bloats the deck by its size, and a third copy is worth less than a first. No amount of training recovers what the observation leaves out. The other card sets (hand, draw pile, discard pile, exhaust pile, the cards offered) are pooled the same way: in combat the policy sees what is in the draw and discard piles, but not how many cards each holds. Potions likewise: it sees which potions it holds, but not how many, nor how many slots its belt has, so it cannot tell a full belt (which decides whether a potion reward or a shop potion can be taken).
+
+**Cards outside the hand show no cost, and some lose numbers.** Only cards in the hand carry their energy cost. Deck cards, the cards offered and shop cards carry none, so the policy picks and buys without seeing cost: 57 cards cost less once upgraded, and an enchantment can change cost too. Each card also keeps its damage, block and only one other number; a card with more loses the rest. A special card offered as a reward (a particular card, not a choice of three) is sent whole, but only its ID reaches the observation, so its upgrade and enchantment are lost.
 
 **Runs fail on the rewards screen after an event's fight.** In spec 013's two longer training runs, 61 of 128 failed runs failed with "the event was still asking after 50 choices" (53 of 101 in the result run). A fight that an event starts (a monster room reached through an unknown room) ends in a rewards screen, and there the agent's choices stop having effect: it takes the same gold, or proceeds, again and again until the event handler gives up.
 
@@ -28,8 +30,9 @@ On the rewards screen the agent cannot leave a card reward unopened or gold unta
 - Forcing a card pick: Skip stays on the card reward screen.
 - Potions and relics: taking them stays the agent's choice (a full potion belt, a relic with a downside).
 - Game crashes ("the game closed the connection") and other failure kinds.
+- What combat and events show beyond the above (power durations, non-attack intent amounts, event option costs, history): spec 015.
 - Attention between the cards offered and the deck's cards, for synergies between particular cards: a later spec, if the agent's picks still ignore its deck.
-- The results dashboard (now spec 015).
+- The results dashboard (now spec 016).
 
 ## Acceptance criteria
 
@@ -41,7 +44,10 @@ Rewards screen:
 
 The deck:
 
-- [ ] The observation gives the deck's size, and for each card in the deck and each card offered (card rewards, card selections, the shop) how many copies of it the deck holds: the same card with the same upgrade. Tests show two decks that differ only in copies give different observations and different states.
+- [ ] The observation gives the size of the deck, and in combat of the hand, draw pile, discard pile and exhaust pile; and for each card in the deck and each card offered (card rewards, card selections, the shop) how many copies of it the deck holds: the same card with the same upgrade. Tests show two decks that differ only in copies give different observations and different states.
+- [ ] Every card in the observation, not only those in the hand, gives its energy cost (with X cost and no cost marked), and every number the game gives it, not only the first beyond damage and block. Tests show it on recorded cards.
+- [ ] A special card offered as a reward reaches the observation as a whole card, like a shop's card. A test shows it.
+- [ ] The observation gives the potions held and the belt's number of slots. A test shows a full belt and one with a free slot give different observations.
 - [ ] Every card set's pooling also gives its size and the counts of its cards' features, not only their mean and maximum. A test shows a set and the same set doubled pool differently.
 - [ ] The schema's hash changes, so a checkpoint from before is refused, naming the difference (training starts from scratch).
 - [ ] The result reports how much the policy's pick probabilities move on recorded card reward decisions when the deck is swapped for the starting deck, for `spec-013.pt` and for this spec's best checkpoint. (A measurement, with no threshold: it shows whether the picks depend on the deck.)

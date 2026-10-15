@@ -98,6 +98,11 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
     return metrics
 
 
+def learning_rate(config: Config, steps: int) -> float:
+    """Falls linearly with the steps taken, from the set learning rate at the start to zero at the step budget."""
+    return config.lr * max(0.0, 1 - steps / config.total_steps)
+
+
 def by_kind(values: torch.Tensor, kinds) -> torch.Tensor:
     """The mean of each decision kind's mean: every kind in the minibatch weighs the same, however many of its steps
     there are. Averaged over steps, the entropy bonus would go almost all to combat, and the rare decisions that build
@@ -233,6 +238,8 @@ class Trainer:
         ended, last_value = self.collector.collect(self.buffer)
         self.buffer.finish(last_value, self.config.gamma, self.config.lam)
         collected = time.monotonic()
+        for group in self.optimizer.param_groups:
+            group["lr"] = learning_rate(self.config, self.steps)
         learner = update(self.policy, self.optimizer, self.buffer, self.config, self.rng, self.kinds)
         if self.player is not self.policy:
             self.player.load_state_dict(self.policy.state_dict())

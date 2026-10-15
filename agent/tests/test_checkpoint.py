@@ -46,8 +46,19 @@ class CheckpointTest(unittest.TestCase):
         straight = self.trainer(small(total_steps=800))
         straight.train()
 
-        first = self.trainer(small(total_steps=400))
-        first.train()
+        # Interrupted after two updates, with the same step budget: the learning rate depends on it.
+        first = self.trainer(small(total_steps=800))
+        one_update, calls = first._one_update, [0]
+
+        def interrupted():
+            calls[0] += 1
+            if calls[0] == 3:
+                raise KeyboardInterrupt
+            one_update()
+
+        first._one_update = interrupted
+        with self.assertRaises(KeyboardInterrupt):
+            first.train()
         state = first.run.load(self.vocabulary)
         first.run.trim_metrics(state["updates"])
         resumed = self.trainer(small(total_steps=800), run=first.run)

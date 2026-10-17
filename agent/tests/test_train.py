@@ -105,6 +105,21 @@ class TrainerTest(unittest.TestCase):
         # Each game's episodes fail halfway, so the first rollout already has 4 failures.
         self.assertEqual(trainer.run.load(self.vocabulary)["updates"], 1)
 
+    def test_game_crashes_do_not_count_against_the_failure_budget(self):
+        trainer = self.trainer(small(failure_budget=2, total_steps=400), fail_every=1,
+                               failure="the game closed the connection: [WinError 10054]")
+        self.assertEqual(trainer.train(), "step budget")
+        self.assertGreater(sum(int(row["failed_runs"]) for row in rows(trainer.run)), 2, "still counted as failed runs")
+
+    def test_a_run_the_failure_budget_stopped_resumes_with_an_empty_window(self):
+        first = self.trainer(small(failure_budget=2, total_steps=400), fail_every=1)
+        with self.assertRaises(FailureBudget):
+            first.train()
+        resumed = self.trainer(small(failure_budget=2, total_steps=400))
+        resumed.run = first.run
+        resumed.restore(first.run.load(self.vocabulary))
+        self.assertEqual(resumed.train(), "step budget")
+
     def test_an_interrupt_saves_the_last_completed_update(self):
         trainer = self.trainer(small(total_steps=10_000))
         envs, steps = trainer.envs, [0]

@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -43,7 +44,7 @@ internal static class GameState
             ["cost"] = card.EnergyCost.GetWithModifiers(CostModifiers.All),
             ["costs_x"] = card.EnergyCost.CostsX,
             ["star_cost"] = StarCost(card),
-            ["vars"] = Vars(card.DynamicVars.Values, v => v.BaseValue),
+            ["vars"] = Vars(Numbers(card), v => v.BaseValue),
             ["keywords"] = new JsonArray(card.Keywords.Select(keyword => keyword.ToString())
                 .OrderBy(name => name, StringComparer.Ordinal).Select(name => (JsonNode)name).ToArray()),
             ["enchantment"] = card.Enchantment is { } enchantment
@@ -60,7 +61,7 @@ internal static class GameState
             // The game's own preview for a card in hand with no target, as its card UI computes it.
             card.DynamicVars.ClearPreview();
             card.UpdateDynamicVarPreview(CardPreviewMode.Normal, null, card.DynamicVars);
-            result["preview"] = Vars(card.DynamicVars.Values, v => v.PreviewValue);
+            result["preview"] = Vars(Numbers(card), v => v.PreviewValue);
         }
         return result;
     }
@@ -74,6 +75,23 @@ internal static class GameState
             return card.CanonicalStarCost;
         }
         return card.HasStarCostX && card.Owner is null ? 0 : card.GetStarCostWithModifiers();
+    }
+
+    /// <summary>A card's numbers. Mad Science, the card the Tinker Time event builds, holds the numbers of every type
+    /// and rider the event offers; only its own type's and rider's apply.</summary>
+    private static IEnumerable<DynamicVar> Numbers(CardModel card)
+    {
+        if (card is not MadScience madScience)
+        {
+            return card.DynamicVars.Values;
+        }
+        var rider = madScience.TinkerTimeRider.ToString();
+        return card.DynamicVars.Values.Where(v => v.Name switch
+        {
+            "Damage" => card.Type == CardType.Attack,
+            "Block" => card.Type == CardType.Skill,
+            _ => v.Name.StartsWith(rider, StringComparison.Ordinal),
+        });
     }
 
     private static JsonObject Vars(IEnumerable<DynamicVar> vars, Func<DynamicVar, decimal> value)

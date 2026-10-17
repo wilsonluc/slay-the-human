@@ -90,7 +90,7 @@ Every card, wherever it appears (deck, hand, piles, card rewards, special card r
 | `cost` | int | energy cost with all modifiers; negative when the card has no energy cost |
 | `costs_x` | bool | an X-cost card, which spends all energy |
 | `star_cost` | int | star cost with modifiers; negative when none |
-| `vars` | object | each of the card's numbers by name, as it is now (`{"Damage": 9, "Block": 0, ...}`), so a card that grew is seen grown |
+| `vars` | object | each of the card's numbers by name, as it is now (`{"Damage": 9, "Block": 0, ...}`), so a card that grew is seen grown. Mad Science, which the Tinker Time event builds, sends only its own type's and rider's numbers, not those of every option the event offers |
 | `keywords` | array | the card's keywords from every source, sorted, such as `Exhaust`, `Ethereal`, `Retain` |
 | `enchantment`, `affliction` | object or null | `{"id", "amount"}` |
 

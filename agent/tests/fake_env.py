@@ -26,8 +26,9 @@ KIND_INDEX = Vocabulary.load().index("KIND", "event")
 
 
 class FakeEnvironment:
-    def __init__(self, seed: int = 0, name: str = "fake", fail_every: int = 0, truncate_at: int = 0) -> None:
-        self.name, self.fail_every, self.truncate_at = name, fail_every, truncate_at
+    def __init__(self, seed: int = 0, name: str = "fake", fail_every: int = 0, truncate_at: int = 0,
+                 failure: str = "the fake game was told to fail") -> None:
+        self.name, self.fail_every, self.truncate_at, self.failure = name, fail_every, truncate_at, failure
         self.peak_memory = 0
         self._kind_index = KIND_INDEX
         self._rng = random.Random(seed)
@@ -48,7 +49,7 @@ class FakeEnvironment:
         self._good += int(action == self._good_action)
         self._step += 1
         if self.fail_every and self._episodes % self.fail_every == 0 and self._step == LENGTH // 2:
-            return self._end("failed: the fake game was told to fail", 0.0, terminated=False)
+            return self._end(f"failed: {self.failure}", 0.0, terminated=False)
         if self._step == LENGTH:
             half = CHOICES / 2
             return self._end("loss", (self._good - half) / half, terminated=True)

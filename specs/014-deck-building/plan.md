@@ -51,6 +51,11 @@ As spec 013: `--total-steps 2000000`, seed 2040 with six games stopped after 300
 - Deck dependence → a script, scratchpad: for recorded card reward decisions from the training traces, the mean total variation distance between pick probabilities with the real deck and with the starting deck, for `spec-013.pt` (in its own code's encoding, at commit 449bacc) and for this spec's best checkpoint.
 - Training → `metrics.csv`, `generations.csv` and the traces, as spec 013.
 
+## Found in training
+
+- Mad Science, the card the Tinker Time event builds, carries the numbers of every type and rider the event offers (11), past the 6 a card holds; three act 3 runs failed on it. The mod now sends only its own type's and rider's numbers.
+- A cluster of the game's own crashes (in its garbage collector's finalizers, 10 to 20 a day since the first runs) passed the failure budget, and the restored window then stopped the resumed run after one update. Game crashes no longer count against the budget, and the window starts empty on resume (user's call, 2026-10-17).
+
 ## Risks
 
 - Restarting from scratch loses spec 013's 2,000,000 steps → the 2,000,000-step run is compared with `spec-013.pt` before the default changes.

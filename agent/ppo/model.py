@@ -1,7 +1,7 @@
 """The policy and value network over the structured observation (docs/architecture.md).
 
 Every ID is embedded from one table over the whole vocabulary. Each set's entities go through a network shared within
-the set, then are pooled with the presence masks (mean and max) into the state vector, with the global IDs and numbers.
+the set, then are pooled with the presence masks (mean, max and sum) into the state vector, with the global IDs and numbers.
 Action logits are pointer-style: each segment scores the entities its actions name together with the state, so a
 card's logit follows the card wherever it sits, and reordering a set's entities reorders its logits and nothing else.
 """
@@ -27,6 +27,7 @@ SETS = {
     "potions": (2, 0),
     "map": (1, 4 + encoding.ROUTE_FLOATS),
     "rewards": (2, 3),
+    "reward_cards": (5, encoding.CARD_FLOATS),
     "options": (2, 4),
     "shop": (2, 3),
 }
@@ -99,10 +100,13 @@ class PairScorer(Scorer):
 
 
 def pool(x: torch.Tensor, present: torch.Tensor) -> torch.Tensor:
-    """Masked mean and max over the entity axis (-2): [..., N, H] -> [..., 2H]. An empty set gives zeros."""
+    """Masked mean, max and sum over the entity axis (-2): [..., N, H] -> [..., 3H]. An empty set gives zeros. Mean and
+    max are blind to counts (a set and the same set doubled pool alike); the sum, scaled by the set's capacity, keeps
+    them: how many cards, and how many with each feature (spec 014)."""
     m = present.unsqueeze(-1)
     x = x * m
-    return torch.cat([x.sum(-2) / m.sum(-2).clamp(min=1), x.max(-2).values], -1)
+    total = x.sum(-2)
+    return torch.cat([total / m.sum(-2).clamp(min=1), x.max(-2).values, total / x.shape[-2]], -1)
 
 
 class Policy(nn.Module):
@@ -112,12 +116,12 @@ class Policy(nn.Module):
         self.sets = nn.ModuleDict({name: Entities(ids * embed + floats, hidden) for name, (ids, floats) in SETS.items()})
         self.powers = Entities(embed + 1, hidden)
         self.intents = Entities(embed + 2, hidden)
-        self.enemies = Entities(embed + 3 + 4 * hidden, hidden)
+        self.enemies = Entities(embed + 3 + 6 * hidden, hidden)
         self.cells = Entities(3, hidden)
         cell = torch.arange(encoding.CELLS)
         self.register_buffer("cell_position", torch.stack([cell % GRID, cell // GRID], -1).float() / GRID,
                              persistent=False)
-        globals_in = 10 * embed + encoding.GLOBAL_FLOATS + 2 * hidden * len(POOLED)
+        globals_in = 10 * embed + encoding.GLOBAL_FLOATS + 3 * hidden * len(POOLED)
         self.state = nn.Sequential(nn.Linear(globals_in, state), nn.ReLU(), nn.Linear(state, state), nn.ReLU())
         self.value = nn.Linear(state, 1)
         self.no_target = nn.Parameter(torch.zeros(hidden))
@@ -171,7 +175,7 @@ class Policy(nn.Module):
             "play": self.scorers["play"](entity["hand"], targets, state),
             "potion": self.scorers["potion"](entity["potions"], targets, state),
             "travel": self.scorers["travel"](entity["map"], state),
-            "reward": self.scorers["reward"](entity["rewards"], state),
+            "reward": self.scorers["reward"](entity["rewards"] + entity["reward_cards"], state),
             "card": self.scorers["card"](choices, state),
             "option": self.scorers["option"](entity["options"], state),
             "shop": self.scorers["shop"](entity["shop"] + entity["shop_cards"], state),

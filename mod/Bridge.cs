@@ -21,7 +21,7 @@ namespace SlayTheHuman;
 internal static class Bridge
 {
     /// <summary>The protocol version in docs/protocol.md. tools/test.sh checks the agent uses the same.</summary>
-    public const int Protocol = 4;
+    public const int Protocol = 5;
 
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
 

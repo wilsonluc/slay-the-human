@@ -8,13 +8,14 @@ import torch
 from agent.env import encoding
 from agent.env.encoding import ENEMIES, HAND, Encoder, segment
 from agent.env.vocabulary import Vocabulary
-from agent.ppo.model import Policy, as_tensors, masked
+from agent.ppo.model import Policy, as_tensors, masked, pool
 from agent.tests.test_encoding import recordings
 
 HAND_KEYS = ["hand_ids", "hand", "hand_present"]
 ENEMY_KEYS = ["enemies_ids", "enemies", "enemies_present", "enemy_powers_ids", "enemy_powers", "enemy_powers_present",
               "intents_ids", "intents", "intents_present"]
-REWARD_KEYS = ["rewards_ids", "rewards", "rewards_present"]
+REWARD_KEYS = ["rewards_ids", "rewards", "rewards_present", "reward_cards_ids", "reward_cards",
+               "reward_cards_present"]
 
 
 def permuted(obs: dict, keys: list[str], order: list[int]) -> dict:
@@ -105,6 +106,34 @@ class PolicyTest(unittest.TestCase):
         entropy = torch.distributions.Categorical(logits=masked(logits, mask)).entropy()
         legal_only = torch.distributions.Categorical(logits=logits[mask]).entropy()
         torch.testing.assert_close(entropy[0], legal_only)
+
+
+class CountsTest(unittest.TestCase):
+    """Spec 014: the state tells a set from the same set doubled."""
+
+    def test_a_set_and_the_same_set_doubled_pool_differently(self):
+        x = torch.rand(1, 6, 4)
+        once = torch.tensor([[1, 1, 1, 0, 0, 0]], dtype=torch.float32)
+        twice = torch.tensor([[1, 1, 1, 1, 1, 1]], dtype=torch.float32)
+        doubled = x.clone()
+        doubled[:, 3:] = x[:, :3]
+        a, b = pool(x, once), pool(doubled, twice)
+        torch.testing.assert_close(a[..., :8], b[..., :8])  # mean and max alike
+        torch.testing.assert_close(b[..., 8:], 2 * a[..., 8:])  # the sum doubles
+
+    def test_decks_that_differ_only_in_copies_give_different_values(self):
+        torch.manual_seed(0)
+        vocabulary = Vocabulary.load()
+        encoder, policy = Encoder(vocabulary), Policy(len(vocabulary))
+        decision = next(d for d in recordings() if d["kind"] == "map")
+        once, _ = encoder.encode(decision)
+        decision = {**decision, "state": {**decision["state"], "run": {**decision["state"]["run"],
+                    "deck": decision["state"]["run"]["deck"] * 2}}}
+        twice, _ = encoder.encode(decision)
+        batch = {key: np.stack([once[key], twice[key]]) for key in once}
+        with torch.no_grad():
+            _, value = policy(as_tensors(batch))
+        self.assertNotAlmostEqual(float(value[0]), float(value[1]), places=6)
 
 
 if __name__ == "__main__":

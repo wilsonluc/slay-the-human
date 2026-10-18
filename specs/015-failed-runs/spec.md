@@ -1,6 +1,6 @@
 # 015: Failed runs
 
-Status: draft
+Status: approved
 
 ## Problem
 
@@ -35,7 +35,7 @@ Every failure kind above that has its cause in the mod, the trainer or AutoSlay 
 - [ ] The Crystal Sphere never reaches its choice limit: switching tools is offered only when the last choice was not a switch. Checked in the game, and no Crystal Sphere timeout in the training run.
 - [ ] At a rest site with the Miniature Tent, choosing Smith as a later option goes on to the rest site's next choice, with no disposed button. Checked in the game.
 - [ ] A run that reaches total floor 49 goes on to its act 3 boss. Checked in the game on a seed whose act 3 boss is on floor 50.
-- [ ] A draw, discard or exhaust pile larger than the observation holds no longer fails the run: the observation keeps its most recent cards, and the pile's size stays exact. A test shows it.
+- [ ] A draw, discard or exhaust pile larger than the observation holds no longer fails the run: the observation keeps as many of its cards as it holds, in the pile's order (sorted, as the protocol sends piles), and the pile's size stays exact. A test shows it.
 - [ ] A training run from scratch with spec 014's result settings (four games, seed 2032, the 2,000,000-step schedule, stopped after 500,000 steps) has no failure of the kinds fixed above, and its failed runs are counted by kind in the result.
 
 ## Open questions

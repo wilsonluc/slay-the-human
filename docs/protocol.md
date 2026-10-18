@@ -245,4 +245,4 @@ Actions: `{"kind": "pick", "bundle": <index into bundles>}`.
 | `divinations` | int | reveals left |
 | `tool` | string | the current divination: `Big` (3 by 3) or `Small` (one cell) |
 
-Actions: `{"kind": "reveal", "x": <x>, "y": <y>}` for each hidden cell, and `{"kind": "tool", "tool": <the other tool>}`.
+Actions: `{"kind": "reveal", "x": <x>, "y": <y>}` for each hidden cell, and `{"kind": "tool", "tool": <the other tool>}` unless the last choice was a switch: a switch spends no divination, so switching back and forth would never finish.

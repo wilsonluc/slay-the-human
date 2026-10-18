@@ -55,21 +55,24 @@ internal static class AgentRestSite
             for (var i = 0; i < buttons.Count; i++)
             {
                 var button = buttons[i];
-                var id = button.Option.OptionId;
-                if (button.Option.IsEnabled)
+                var option = button.Option;
+                var id = option.OptionId;
+                if (option.IsEnabled)
                 {
                     decision.Add(new JsonObject { ["kind"] = "rest", ["option"] = i }, async () =>
                     {
                         await UiHelper.Click(button);
-                        // The option resolves when the game lets the player leave, or opens a screen of its own.
-                        await Wait.Until(() => room!.ProceedButton.IsEnabled || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0,
+                        // The option resolves when it leaves the room's options, or opens a screen of its own. The
+                        // proceed button is no sign: after a first option it stays enabled, and a later one (with
+                        // Miniature Tent) would be offered again before it resolved (spec 015).
+                        await Wait.Until(() => !room!.Options.Contains(option) || (NOverlayStack.Instance?.ScreenCount ?? 0) > 0,
                             RespondTimeout, $"rest site option {id} to resolve", ct);
-                        // A screen the option opens (resting with Tiny Mailbox gives potion rewards) is answered
-                        // through AutoSlay's screen loop, then the rest site carries on.
+                        // A screen the option opens (Smith's card choice, or resting with Tiny Mailbox giving potion
+                        // rewards) is answered through AutoSlay's screen loop, then the rest site carries on.
                         if ((NOverlayStack.Instance?.ScreenCount ?? 0) > 0)
                         {
                             await RunLoop.DrainScreensAsync(ct);
-                            await Wait.Until(() => room!.ProceedButton.IsEnabled, RespondTimeout,
+                            await Wait.Until(() => !room!.Options.Contains(option), RespondTimeout,
                                 $"the rest site after option {id}", ct);
                         }
                     });

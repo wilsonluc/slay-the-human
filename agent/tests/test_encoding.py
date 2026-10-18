@@ -290,3 +290,11 @@ class DeckBuildingTest(unittest.TestCase):
         self.assertEqual(obs["reward_cards_present"].sum(), 1.0)
         self.assertEqual(obs["reward_cards_present"][slot], 1.0)
         self.assertEqual(obs["reward_cards_ids"][slot, 0], obs["deck_ids"][0, 0])
+
+    def test_a_pile_past_the_observation_keeps_its_first_cards_and_its_exact_size(self):
+        decision = recorded("combat")
+        exhaust = [copy.deepcopy(decision["state"]["run"]["deck"][0]) for _ in range(encoding.PILE + 100)]
+        decision["state"]["combat"]["exhaust"] = exhaust
+        obs, _ = self.encoder.encode(decision)
+        self.assertEqual(obs["exhaust_present"].sum(), encoding.PILE)
+        self.assertAlmostEqual(obs["global"][EXHAUST_SIZE], encoding.slog(encoding.PILE + 100), places=5)

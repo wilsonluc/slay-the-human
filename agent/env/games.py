@@ -104,7 +104,8 @@ def memory(process) -> int:
 
 
 def launch(port, log_file, time_scale=20, command=None, extra_args=()):
-    """Launches one game in run mode with no window, connecting to the agent on port and logging to log_file.
+    """Launches one game in run mode with no window, connecting to the agent on port and logging to log_file. Its error
+    output goes beside the log (error_file): a .NET crash writes its exception there, and nowhere else.
 
     command replaces the game's executable (the tests launch a fake game this way); by default it is the game copy's.
     """
@@ -116,8 +117,14 @@ def launch(port, log_file, time_scale=20, command=None, extra_args=()):
         env["SteamAppId"] = env["SteamGameId"] = str(APP_ID)
     args = [*command, "--slay-the-human-run", f"--slay-the-human-agent-port={port}", "--headless",
             "--time-scale", str(time_scale), *extra_args, "--log-file", str(log_file)]
-    return subprocess.Popen(args, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+    with open(error_file(log_file), "w", encoding="utf-8") as errors:
+        return subprocess.Popen(args, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=errors)
+
+
+def error_file(log_file) -> Path:
+    """Where a game's error output goes: game0-3.log -> game0-3.errors.txt."""
+    log_file = Path(log_file)
+    return log_file.with_name(log_file.stem + ".errors.txt")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from agent.bridge import BridgeError
-from agent.env import encoding, reward
+from agent.env import encoding, games, reward
 from agent.env.environment import Environment, IllegalAction
 from agent.env.vocabulary import VocabularyError
 
@@ -108,6 +108,25 @@ class EnvironmentTest(unittest.TestCase):
         with self.assertLogs("agent.env.environment", "ERROR"):
             steps = play(env, random.Random(4))
         self.assertIn("told to quit", steps[-1][3]["outcome"])
+
+    def test_a_run_autoslay_fails_is_named_by_its_line_not_as_a_crash(self):
+        env = self.env(mode="autoslay")
+        with self.assertLogs("agent.env.environment", "ERROR"):
+            steps = play(env, random.Random(4))
+        outcome = steps[-1][3]["outcome"]
+        self.assertTrue(outcome.startswith("failed: AutoSlay failed the run: Cannot access a disposed object."), outcome)
+        self.assertNotIn("closed the connection", outcome)
+        self.assertNotIn("seed=", outcome, "the reason groups across seeds")
+
+    def test_a_crash_keeps_its_error_output_and_names_its_exit_code(self):
+        env = self.env(mode="crash")
+        with self.assertLogs("agent.env.environment", "ERROR"):
+            steps = play(env, random.Random(4))
+        outcome = steps[-1][3]["outcome"]
+        self.assertIn("the game closed the connection", outcome)
+        self.assertIn("the game exited with code 0xe0434352", outcome)
+        errors = games.error_file(env._log).read_text(encoding="utf-8")
+        self.assertIn("the fake game crashed", errors)
 
     def test_training_never_plays_an_evaluation_seed(self):
         from agent.env.seeds import evaluation_seeds

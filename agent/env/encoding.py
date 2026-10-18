@@ -25,7 +25,9 @@ HAND = 10
 ENEMIES = 8
 POTIONS = 10  # 3 to start, plus Alchemical Coffer's 4, Potion Belt's 2 and Phial Holster's 1
 DECK = 150
-# Long fights fill piles with status cards (a slime fight's Slimed passed 100 exhausted cards).
+# Long fights fill piles with status cards (a slime fight's Slimed passed 100 exhausted cards). A fight that cannot end
+# grows a pile without bound; past this, the observation keeps the pile's first cards in its sorted order, and the
+# global sizes keep its exact size (spec 015).
 PILE = 300
 RELICS = 40
 POWERS = 20
@@ -296,7 +298,7 @@ class Encoder:
         hand = combat["hand"] if combat else []
         self._cards(obs, "hand", hand, HAND, lambda i, card: _hand_numbers(card), HAND_FLOATS)
         for pile in ("draw", "discard", "exhaust"):
-            self._cards(obs, pile, combat[pile] if combat else [], PILE)
+            self._cards(obs, pile, (combat[pile] if combat else [])[:PILE], PILE)
         player_powers = combat["player"]["powers"] if combat else []
         obs["player_powers_ids"], obs["player_powers"], obs["player_powers_present"] = self._powers(
             "player_powers", player_powers, POWERS)

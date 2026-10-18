@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 using Godot;
@@ -111,4 +114,35 @@ internal static class StayOpen
     private static bool Prepare() => RunMode.IsOn;
 
     private static bool Prefix(int exitCode) => exitCode != 0;
+}
+
+/// <summary>
+/// In run mode, AutoSlay plays a run to its end. Its run loop stops at total floor 49 and abandons the run, through a
+/// button this build no longer has; a run whose act 3 boss is on floor 50 was failed at the rest site before it, and
+/// those are the agent's best runs (spec 015). A win and a loss end the loop on their own.
+/// </summary>
+[HarmonyPatch]
+internal static class NoFloorLimit
+{
+    private const int FloorLimit = 49;
+
+    private static bool Prepare() => RunMode.IsOn;
+
+    private static MethodBase TargetMethod() =>
+        AccessTools.AsyncMoveNext(AccessTools.Method(typeof(AutoSlayer), "PlayRunAsync"))
+        ?? throw new InvalidOperationException("AutoSlayer.PlayRunAsync is no longer async");
+
+    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+    {
+        var codes = instructions.ToList();
+        var limits = codes.Where(code => code.LoadsConstant(FloorLimit)).ToList();
+        if (limits.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"found {limits.Count} loads of {FloorLimit} in AutoSlayer.PlayRunAsync, not one; the game has changed");
+        }
+        limits[0].opcode = OpCodes.Ldc_I4;
+        limits[0].operand = int.MaxValue;
+        return codes;
+    }
 }

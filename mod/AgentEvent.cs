@@ -36,6 +36,7 @@ internal static class AgentEvent
     private const int MaxChoices = 50;
     private static readonly TimeSpan ChangeTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(10);
+    private const string EventRoomPath = "/root/Game/RootSceneContainer/Run/RoomContainer/EventRoom";
 
     private static readonly MethodInfo WaitForEventRoom = AccessTools.Method(typeof(EventRoomHandler), "WaitForEventRoom");
     private static readonly MethodInfo WaitForEventOptions = AccessTools.Method(typeof(EventRoomHandler), "WaitForEventOptions");
@@ -78,11 +79,18 @@ internal static class AgentEvent
                 // The room closed. A combat may be replacing it, which the game registers a moment later, so wait to
                 // see what comes next; after a combat, the event may resume in a new room.
                 await Wait.Until(() => CombatStarting || ScreenOpen ||
-                    (NMapScreen.Instance?.IsOpen ?? false) || RunOver.IsOver, ChangeTimeout,
-                    "what follows the event room closing", ct);
+                    (NMapScreen.Instance?.IsOpen ?? false) || RunOver.IsOver || EventRoom() is { } room && room != eventRoom,
+                    ChangeTimeout, "what follows the event room closing", ct);
                 if (RunOver.IsOver)
                 {
                     await RunOver.EndIfLostAsync(ct);
+                }
+                // An event that carries on after its fight with no screen of its own (the Battleworn Dummy's second and
+                // third settings) comes back as a new room on its next page (spec 015).
+                if (!CombatStarting && !ScreenOpen && EventRoom() is { } returned && returned != eventRoom)
+                {
+                    eventRoom = returned;
+                    continue;
                 }
                 var run = RunManager.Instance.DebugOnlyGetState();
                 if (!CombatStarting || run is null || run.CurrentRoomCount <= 1 || run.BaseRoom?.RoomType != RoomType.Event)
@@ -90,8 +98,7 @@ internal static class AgentEvent
                     return;
                 }
                 await (Task)HandleEventCombat.Invoke(handler, new object[] { ct })!;
-                var resumed = ((SceneTree)Engine.GetMainLoop()).Root
-                    .GetNodeOrNull("/root/Game/RootSceneContainer/Run/RoomContainer/EventRoom");
+                var resumed = ((SceneTree)Engine.GetMainLoop()).Root.GetNodeOrNull(EventRoomPath);
                 if (resumed is null)
                 {
                     return;
@@ -255,4 +262,8 @@ internal static class AgentEvent
         .Where(button => !button.Option.IsLocked && button.IsEnabled).ToList();
 
     private static bool Alive(Node node) => GodotObject.IsInstanceValid(node) && node.IsInsideTree();
+
+    /// <summary>The event room now in the scene, if any.</summary>
+    private static Node? EventRoom() =>
+        ((SceneTree)Engine.GetMainLoop()).Root.GetNodeOrNull(EventRoomPath) is { } room && Alive(room) ? room : null;
 }

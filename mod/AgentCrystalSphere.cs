@@ -43,6 +43,9 @@ internal static class AgentCrystalSphere
     private static async Task PlayAsync(NCrystalSphereScreen screen, CancellationToken ct)
     {
         var game = Minigame(screen);
+        // A switch of tools spends no divination, so it is offered only after a reveal: a policy that kept switching
+        // would reach MaxChoices with divinations left, and the minigame would never finish (spec 015).
+        var switched = false;
         for (var choices = 0; choices < MaxChoices && !game.IsFinished; choices++)
         {
             ct.ThrowIfCancellationRequested();
@@ -68,6 +71,7 @@ internal static class AgentCrystalSphere
             {
                 decision.Add(new JsonObject { ["kind"] = "reveal", ["x"] = cell.Entity.X, ["y"] = cell.Entity.Y }, async () =>
                 {
+                    switched = false;
                     cell.EmitSignal(NClickableControl.SignalName.Released, cell);
                     await Wait.Until(() => game.DivinationCount < count || !Alive(screen) || OtherScreenOnTop(screen),
                         StepTimeout, "the Crystal Sphere to reveal a cell", ct);
@@ -76,13 +80,17 @@ internal static class AgentCrystalSphere
             var other = game.CrystalSphereTool == CrystalSphereMinigame.CrystalSphereToolType.Small
                 ? CrystalSphereMinigame.CrystalSphereToolType.Big
                 : CrystalSphereMinigame.CrystalSphereToolType.Small;
-            decision.Add(new JsonObject { ["kind"] = "tool", ["tool"] = other.ToString() }, async () =>
+            if (!switched)
             {
-                var button = screen.GetNode<NDivinationButton>(other == CrystalSphereMinigame.CrystalSphereToolType.Big
-                    ? "%BigDivinationButton" : "%SmallDivinationButton");
-                await UiHelper.Click(button);
-                await Wait.Until(() => game.CrystalSphereTool == other, StepTimeout, "the Crystal Sphere's tool to change", ct);
-            });
+                decision.Add(new JsonObject { ["kind"] = "tool", ["tool"] = other.ToString() }, async () =>
+                {
+                    switched = true;
+                    var button = screen.GetNode<NDivinationButton>(other == CrystalSphereMinigame.CrystalSphereToolType.Big
+                        ? "%BigDivinationButton" : "%SmallDivinationButton");
+                    await UiHelper.Click(button);
+                    await Wait.Until(() => game.CrystalSphereTool == other, StepTimeout, "the Crystal Sphere's tool to change", ct);
+                });
+            }
             await decision.RunAsync(ct);
         }
 

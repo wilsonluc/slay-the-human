@@ -46,7 +46,7 @@ largest choices=20 deck=20 discard=20 ...
 - `--character <id>` picks the character (`IRONCLAD`, the default; the observation does not yet carry Defect's orbs or Necrobinder's Osty).
 - `--trace-every <n>` keeps a full trace of one run in that many (default 100); failed runs always keep theirs. Every run adds a row to `summary.jsonl`, with its seed and action indices.
 - `--think-seconds <s> --think-count <n>` pauses before the first actions, to check the game waits.
-- Game logs, traces and summaries go in `runs/` (gitignored).
+- Game logs, traces and summaries go in `runs/` (gitignored). Beside each game log, `<game>-<n>.errors.txt` keeps the game's error output: a crash writes its exception there, and the failed run's reason names the game's exit code.
 - An action the mask does not allow raises, and the run ends as an error. Nothing ever picks an action in the agent's place.
 - Runs fix every unlock and save nothing, so they neither depend on nor change your profile, saves, stats or achievements.
 - A normal launch from Steam is unaffected: run mode and the bridge are on only when the game is started with them.

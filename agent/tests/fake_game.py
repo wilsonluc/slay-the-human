@@ -8,11 +8,13 @@ After each start it plays recorded decisions (recordings/decisions.jsonl) in ord
 answer the way the mod does, then ends the run with run_end and waits at ready again. Modes make it misbehave:
 hang (stops answering partway through a run), exit (quits partway through), version (another protocol version),
 game-version (another game version), unknown (a card the vocabulary lacks), memory (allocates 400 MB and stops answering),
-overflow (from the second decision, a deck too big for the observation).
+overflow (from the second decision, a deck too big for the observation), autoslay (fails the run the way AutoSlay
+does, then quits), crash (dies the way an unhandled .NET exception kills the game, with its message on stderr).
 """
 
 import argparse
 import json
+import os
 import socket
 import sys
 import time
@@ -25,6 +27,7 @@ from agent.bridge import PROTOCOL  # noqa: E402
 from agent.env.vocabulary import Vocabulary  # noqa: E402
 
 RECORDINGS = HERE / "recordings" / "decisions.jsonl"
+UNHANDLED_EXCEPTION = 0xE0434352 - 2**32  # the exit code .NET gives a process it kills, as a signed int
 
 
 def main() -> int:
@@ -68,6 +71,16 @@ def main() -> int:
             if number == 2 and args.mode == "memory":
                 ballast = bytearray(400 * 2**20)  # noqa: F841, held while it hangs
                 time.sleep(3600)
+            if number == 2 and args.mode == "autoslay":
+                print(f"[ERROR] [AutoSlay] Run failed with seed={start['seed']}: Cannot access a disposed object.", file=log)
+                print("   at MegaCrit.Sts2.Core.AutoSlay.AutoSlayLog.RunFailed(String seed, Exception ex)",
+                      file=log, flush=True)
+                return 1
+            if number == 2 and args.mode == "crash":
+                print("Unhandled exception. System.InvalidOperationException: the fake game crashed", file=sys.stderr,
+                      flush=True)
+                sock.close()
+                os._exit(UNHANDLED_EXCEPTION)
             if number == 2 and args.mode == "exit":
                 print("[SlayTheHuman] run error: the fake game was told to quit", file=log, flush=True)
                 return 1

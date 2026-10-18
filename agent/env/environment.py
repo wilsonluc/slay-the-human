@@ -20,6 +20,7 @@ import subprocess
 import threading
 import time
 import random
+import re
 from pathlib import Path
 
 import numpy as np
@@ -97,8 +98,9 @@ class Environment:
             self._bridge.start(self._seed, self.character, self.hang_seconds)
             message = self._bridge.next(self.hang_seconds)
         except (BridgeError, TimeoutError, OSError) as e:
+            exited = self._exited() if isinstance(e, BridgeError) else ""
             self._kill()
-            raise BridgeError(f"{self.name}: the game did not start the run: {e or 'timed out'}") from e
+            raise BridgeError(f"{self.name}: the game did not start the run: {e or 'timed out'}{exited}") from e
         if message["type"] != "decision":
             raise BridgeError(f"{self.name}: the run ended before its first decision")
         self._in_run = True
@@ -132,7 +134,10 @@ class Environment:
             if message is not None and message["type"] == "decision":
                 self._load(message)
         except (BridgeError, TimeoutError, OSError) as e:
-            self._failure = f"failed: {self._memory_failure or self._game_error() or e or 'no decision within the hang time'}"
+            # A closed connection: wait for the game to exit, so its log holds its last line.
+            exited = self._exited() if isinstance(e, BridgeError) else ""
+            reason = self._memory_failure or self._game_error() or e or "no decision within the hang time"
+            self._failure = f"failed: {reason}{exited}"
         except EncodingError as e:
             # A decision too big for the observation ends its run as an error; the failure budget catches a pattern.
             self._failure = f"failed: the decision does not fit the observation: {e}"
@@ -238,8 +243,22 @@ class Environment:
             lines = self._log.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             return None
-        errors = [line for line in lines if "run error" in line or "RunFailed" in line]
-        return errors[-1].strip() if errors else None
+        for line in reversed(lines):
+            if "run error" in line:
+                return line.strip()
+            # AutoSlay's own failure, after which it quits the game; the seed is left out, so the reasons group.
+            if failed := re.search(r"Run failed with seed=\S+: (.*)", line):
+                return f"AutoSlay failed the run: {failed.group(1).strip()}"
+        return None
+
+    def _exited(self) -> str:
+        """For a game whose connection closed: its exit code, once it has exited (0xE0434352 is an unhandled .NET
+        exception, 0xC0000005 an access violation; the error output beside the log has the rest)."""
+        try:
+            code = self._game.wait(timeout=5)
+        except (subprocess.TimeoutExpired, AttributeError):
+            return ""
+        return f"; the game exited with code {code & 0xFFFFFFFF:#010x}"
 
     def _answer(self, answer) -> dict | None:
         """Answers the decision. A pick within a card selection only marks the card, until the selection is sent."""

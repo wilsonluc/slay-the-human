@@ -10,7 +10,7 @@ import torch
 from agent.checkpoint import TrainingRun
 from agent.env.vocabulary import Vocabulary
 from agent.ppo.config import Config, parse
-from agent.ppo.train import STOP_FILE, FailureBudget, Trainer, by_kind, learning_rate
+from agent.ppo.train import STOP_FILE, FailureBudget, Trainer, by_kind, every_kind, learning_rate
 from agent.tests.fake_env import FakeEnvironment
 
 # Columns that depend on the machine's speed, not on the seed.
@@ -34,7 +34,7 @@ def without_timing(row: dict) -> dict:
     return {key: value for key, value in row.items() if key not in TIMING}
 
 
-class EntropyByKindTest(unittest.TestCase):
+class ByKindTest(unittest.TestCase):
     def test_a_rare_kind_pulls_as_much_as_a_common_one(self):
         # 99 combat steps and one card reward: each kind's steps together get the same share of the bonus's gradient.
         entropy = torch.cat([torch.full((99,), 1.0), torch.zeros(1)]).requires_grad_()
@@ -42,6 +42,13 @@ class EntropyByKindTest(unittest.TestCase):
         self.assertAlmostEqual(float(bonus), 0.5)
         bonus.backward()
         self.assertAlmostEqual(float(entropy.grad[:99].sum()), float(entropy.grad[99]))
+
+    def test_the_policy_loss_gives_a_rare_kind_an_equal_share_and_combat_its_steps(self):
+        # 99 combat steps and one card reward. Over steps alone the card reward would pull 1/100.
+        loss = torch.ones(100, requires_grad=True)
+        every_kind(loss, [7] * 99 + [3]).backward()
+        self.assertGreaterEqual(float(loss.grad[99]), 0.5, "at least an equal share of the two kinds")
+        self.assertGreaterEqual(float(loss.grad[:99].sum()), 0.99, "combat keeps its pull over steps")
 
 
 class LearningRateTest(unittest.TestCase):
@@ -70,7 +77,8 @@ class TrainerTest(unittest.TestCase):
         self.assertTrue(any(not torch.equal(a, b) for a, b in zip(before, trainer.policy.parameters())))
         (row,) = rows(trainer.run)
         for name in ("approx_kl", "clip_fraction", "entropy", "value_loss", "policy_loss", "explained_variance",
-                     "steps_per_second", "update_share", "mean_return", "legal_actions", "entropy_event"):
+                     "steps_per_second", "update_share", "mean_return", "legal_actions", "entropy_event",
+                     "approx_kl_event"):
             self.assertTrue(row[name] != "" and float(row[name]) == float(row[name]), name)
         self.assertEqual(row["runs"], "2")
         for name in ("card_rewards_taken", "smith_taken", "card_removal_taken"):

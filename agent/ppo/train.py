@@ -53,6 +53,7 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
     policy.train()
     stats = collections.defaultdict(list)
     entropy_of = collections.defaultdict(list)
+    kl_of = collections.defaultdict(list)
     for epoch in range(config.epochs):
         for batch in buffer.minibatches(config.minibatch, rng):
             obs = as_tensors(batch["obs"], config.device)
@@ -69,8 +70,8 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
             log_prob, entropy = distribution.log_prob(action), distribution.entropy()
             log_ratio = log_prob - old_log_prob
             ratio = log_ratio.exp()
-            policy_loss = -torch.min(ratio * advantage,
-                                     ratio.clamp(1 - config.clip, 1 + config.clip) * advantage).mean()
+            clipped = ratio.clamp(1 - config.clip, 1 + config.clip) * advantage
+            policy_loss = every_kind(-torch.min(ratio * advantage, clipped), batch["kind"])
             value_loss = 0.5 * ((value - returns) ** 2).mean()
             loss = policy_loss + config.value_coef * value_loss - config.entropy_coef * by_kind(entropy, batch["kind"])
             optimizer.zero_grad()
@@ -80,7 +81,10 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
 
             if epoch == config.epochs - 1:
                 with torch.no_grad():
-                    stats["approx_kl"].append(float(((ratio - 1) - log_ratio).mean()))
+                    kl = (ratio - 1) - log_ratio
+                    stats["approx_kl"].append(float(kl.mean()))
+                    for kind, value_ in zip(batch["kind"], kl.tolist()):
+                        kl_of[kinds.get(int(kind), "other")].append(value_)
                     stats["clip_fraction"].append(float(((ratio - 1).abs() > config.clip).float().mean()))
             if epoch == 0:
                 with torch.no_grad():
@@ -95,12 +99,22 @@ def update(policy: Policy, optimizer: torch.optim.Optimizer, buffer: Buffer, con
     metrics["explained_variance"] = float(1 - np.var(returns - values) / variance) if variance > 0 else 0.0
     for kind in encoding.KINDS:
         metrics[f"entropy_{kind}"] = float(np.mean(entropy_of[kind])) if entropy_of[kind] else ""
+    for kind in encoding.KINDS:
+        metrics[f"approx_kl_{kind}"] = float(np.mean(kl_of[kind])) if kl_of[kind] else ""
     return metrics
 
 
 def learning_rate(config: Config, steps: int) -> float:
     """Falls linearly with the steps taken, from the set learning rate at the start to zero at the step budget."""
     return config.lr * max(0.0, 1 - steps / config.total_steps)
+
+
+def every_kind(values: torch.Tensor, kinds) -> torch.Tensor:
+    """The mean over steps plus the mean over kinds (by_kind): each kind pulls at least as much as an equal share of
+    the kinds would give it, and combat, most of the steps, keeps all of its pull over steps. Averaged over steps alone,
+    a card reward's own policy loss barely moved the layers it shares with combat, and training drifted into skipping
+    the cards that paid (spec 018)."""
+    return values.mean() + by_kind(values, kinds)
 
 
 def by_kind(values: torch.Tensor, kinds) -> torch.Tensor:

@@ -1,6 +1,6 @@
 # 018: The drift into skipping cards
 
-Status: draft
+Status: approved
 
 ## Problem
 

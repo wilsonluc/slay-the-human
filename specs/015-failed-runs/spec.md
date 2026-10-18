@@ -1,6 +1,6 @@
 # 015: Failed runs
 
-Status: approved
+Status: done
 
 ## Problem
 
@@ -29,15 +29,38 @@ Every failure kind above that has its cause in the mod, the trainer or AutoSlay 
 
 ## Acceptance criteria
 
-- [ ] A run that AutoSlay fails (its "Run failed with seed" line) ends as a failed run named by that line, not as "the game closed the connection", and counts against the failure budget. A test on a game log shows it.
-- [ ] The game's error output and exit code are kept for every game process, next to its log, and a failed run caused by a game exit names the exit code.
-- [ ] After the Battleworn Dummy event's fight, at every setting, the event carries on to its end and the run goes on. Checked in the game on a seed that reaches it, for each setting.
-- [ ] The Crystal Sphere never reaches its choice limit: switching tools is offered only when the last choice was not a switch. Checked in the game, and no Crystal Sphere timeout in the training run.
-- [ ] At a rest site with the Miniature Tent, choosing Smith as a later option goes on to the rest site's next choice, with no disposed button. Checked in the game.
-- [ ] A run that reaches total floor 49 goes on to its act 3 boss. Checked in the game on a seed whose act 3 boss is on floor 50.
-- [ ] A draw, discard or exhaust pile larger than the observation holds no longer fails the run: the observation keeps as many of its cards as it holds, in the pile's order (sorted, as the protocol sends piles), and the pile's size stays exact. A test shows it.
-- [ ] A training run from scratch with spec 014's result settings (four games, seed 2032, the 2,000,000-step schedule, stopped after 500,000 steps) has no failure of the kinds fixed above, and its failed runs are counted by kind in the result.
+- [x] A run that AutoSlay fails (its "Run failed with seed" line) ends as a failed run named by that line, not as "the game closed the connection", and counts against the failure budget. A test on a game log shows it.
+- [x] The game's error output and exit code are kept for every game process, next to its log, and a failed run caused by a game exit names the exit code.
+- [x] After the Battleworn Dummy event's fight, at every setting, the event carries on to its end and the run goes on. Checked in the game on a seed that reaches it, for each setting.
+- [x] The Crystal Sphere never reaches its choice limit: switching tools is offered only when the last choice was not a switch. Checked in the game, and no Crystal Sphere timeout in the training run.
+- [x] At a rest site with the Miniature Tent, choosing Smith as a later option goes on to the rest site's next choice, with no disposed button. Checked in the game.
+- [x] A run that reaches total floor 49 goes on to its act 3 boss. Checked in the game on a seed whose act 3 boss is on floor 50.
+- [x] A draw, discard or exhaust pile larger than the observation holds no longer fails the run: the observation keeps as many of its cards as it holds, in the pile's order (sorted, as the protocol sends piles), and the pile's size stays exact. A test shows it.
+- [x] A training run from scratch with spec 014's result settings (four games, seed 2032, the 2,000,000-step schedule, stopped after 500,000 steps) has no failure of the kinds fixed above, and its failed runs are counted by kind in the result.
 
 ## Open questions
 
 None.
+
+## Result
+
+Training run `runs/20261018-153253`: four games, seed 2032, the 2,000,000-step schedule, stopped at 502,303 steps (2026-10-18). Its failed runs by kind, beside spec 014's four-game run over the same first 500,000 steps:
+
+| Failure | Spec 014 run | This run |
+|---|---|---|
+| The game closed the connection (a crash) | 16 | 11 |
+| Timed out | 7 | 0 |
+| AutoSlay failed the run | 1 (labelled as a crash or by its stack line) | 0 |
+| A card's numbers past the observation (fixed in spec 014) | 2 | 0 |
+| Runs | 3,995 | 3,591 |
+
+Every failure left is a game crash, and each names its exit code; the error output is in `game<n>-<k>.errors.txt`:
+
+| Exit code | Count | Error output |
+|---|---|---|
+| 0xc0000005 (access violation) | 7 | 4 end in "Fatal error. 0xC0000005 at Godot.GodotObject.Dispose(Boolean), at Godot.GodotObject.Finalize()", the Spine finalizer crash; 3 have no managed trace (the crash reporter's native crashes) |
+| 0xc0000374 (heap corruption) | 4 | no managed trace |
+
+The Crystal Sphere and the Battleworn Dummy's fight came up and finished. No run reached total floor 49 this early in training. Four games bought the Miniature Tent, but the logs do not show which rest site options were chosen. Those two fixes rest on the replays in the game (floor 49 runs reached the act 3 boss on floor 50, the Miniature Tent run went past the stale Smith to floor 31, both Battleworn Dummy settings and the Crystal Sphere run went past the floors they failed on).
+
+Mean floor at the generations: 17.37 at update 245 and 19.78 at update 489 (spec 014's run: 18.66 and 18.31).

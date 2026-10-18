@@ -89,6 +89,45 @@ class EvaluateTest(unittest.TestCase):
         summary = evaluate.summarize(rows)["best"]
         self.assertEqual((summary["failed"], summary["mean_floor"]), (4, 6.0))
 
+    def test_each_forced_choice_offers_only_its_choice_where_it_is_legal(self):
+        run = lambda hp: {"hp": hp, "max_hp": 80}
+        rest = lambda hp, *ids: {
+            "kind": "rest", "state": {"run": run(hp), "rest": {"options": [{"id": i} for i in ids]}},
+            "actions": [{"kind": "rest", "option": i} for i in range(len(ids))] + [{"kind": "proceed"}]}
+        legal = {10: 0, 11: 1, 12: 2}  # action index -> index into the decision's actions
+        self.assertEqual(evaluate.force_smith(rest(56, "HEAL", "SMITH"), legal), [11])
+        self.assertEqual(evaluate.force_smith(rest(55, "HEAL", "SMITH"), legal), [], "under 70% of max HP")
+        self.assertEqual(evaluate.force_smith(rest(80, "HEAL", "LIFT"), legal), [])
+        shop = lambda *types: {
+            "kind": "shop", "state": {"run": run(80), "shop": {"items": [{"type": t} for t in types]}},
+            "actions": [{"kind": "buy", "item": i} for i in range(len(types))] + [{"kind": "leave"}]}
+        self.assertEqual(evaluate.force_removal(shop("potion", "card_removal"), legal), [11])
+        self.assertEqual(evaluate.force_removal(shop("potion", "card"), legal), [])
+        cards = {"kind": "card_reward", "state": {"run": run(80)},
+                 "actions": [{"kind": "pick", "card": 0}, {"kind": "pick", "card": 1}, {"kind": "alternative"}]}
+        self.assertEqual(evaluate.force_card(cards, legal), [10, 11])
+        self.assertEqual(evaluate.force_smith(cards, legal), [])
+        select = {"kind": "card_select", "state": {"run": run(80)}, "actions": []}
+        self.assertEqual(evaluate.force_card(select, {10: ("pick", 0), 11: ("confirm",)}), [])
+
+    def test_a_forced_mode_plays_the_best_action_among_the_forced_ones(self):
+        class Forcing(FakeEnvironment):
+            decision = {"kind": "card_reward", "state": {}, "actions": [{"kind": "pick", "card": 0}]}
+            forced_action = property(lambda env: int(np.flatnonzero(env.action_masks())[-1]))
+            legal = property(lambda env: {env.forced_action: 0})
+
+            def step(self, action):
+                self.played.append(action == self.forced_action)
+                return super().step(action)
+
+        env = Forcing()
+        env.played = []
+        evaluate.play(env, "ABC", "force_card", evaluate.chooser(self.policy, "force_card"))
+        self.assertTrue(env.played and all(env.played))
+        env.played = []
+        evaluate.play(env, "ABC", "best", evaluate.chooser(self.policy, "best"))
+        self.assertFalse(all(env.played), "the best action alone goes elsewhere")
+
     def test_a_checkpoint_loads_for_evaluation(self):
         root = Path(tempfile.mkdtemp())
         config = small(total_steps=200)

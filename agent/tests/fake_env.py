@@ -17,6 +17,7 @@ import numpy as np
 
 from agent.env import encoding, reward
 from agent.env.encoding import segment
+from agent.env.environment import COUNTED_CHOICES
 from agent.env.vocabulary import Vocabulary
 
 LENGTH = 100
@@ -94,7 +95,7 @@ class FakeEnvironment:
         info = self._info(outcome)
         zero = reward.zero()
         info["run"] = {"contribution": dict(zero), "highest": dict(zero), "final": dict(zero),
-                       "card_rewards": {"offered": 1, "taken": 0}}
+                       **{name: {"offered": 1, "taken": 0} for name in COUNTED_CHOICES}}
         return self._obs, step_reward, terminated, not terminated, info
 
     def _info(self, outcome) -> dict:

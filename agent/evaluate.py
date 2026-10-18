@@ -4,7 +4,8 @@
     python -m agent.evaluate random [--games 4]
 
 Every seed is played once per mode: "best", the policy's best action (the masked argmax), which is the official
-result; "sampled", actions sampled from the policy; and for the random agent "random", a uniform legal action. A
+result; "sampled", actions sampled from the policy; the forced choices (FORCED), the best action with one choice
+forced wherever it is legal; and for the random agent "random", a uniform legal action. A
 seed's sampling uses a generator seeded from the seed and the mode, so the results do not depend on which game played
 which seed, nor on how many games ran. The result goes to runs/eval-<time>/result.json: each seed's outcome, floor, act
 and steps, and per mode the mean floor, win rate, share of runs past each act's boss and failed runs, with everything
@@ -28,7 +29,7 @@ import torch
 from agent.bridge import BridgeError
 from agent.checkpoint import TrainingRun, _git, identities
 from agent.env import games
-from agent.env.environment import make_environments
+from agent.env.environment import is_removal, is_smith, make_environments
 from agent.env.seeds import evaluation_seeds, seeds_hash
 from agent.env.vocabulary import Vocabulary
 from agent.ppo.config import Config
@@ -53,11 +54,42 @@ def chooser(policy: Policy | None, mode: str):
         with torch.inference_mode():
             logits, _ = policy(as_tensors({key: value[None] for key, value in obs.items()}))
         logits = masked(logits, torch.as_tensor(mask)[None])[0]
-        if mode == "best":
+        if mode == "best" or mode in FORCED:
             return int(torch.argmax(logits))
         probs = torch.softmax(logits, -1).double().numpy()
         return int(rng.choice(len(probs), p=probs / probs.sum()))
     return choose
+
+
+def forced(decision: dict, legal: dict[int, object], test) -> list[int]:
+    """The legal action indices whose game action passes the test."""
+    return [index for index, answer in legal.items()
+            if isinstance(answer, int) and test(decision["state"], decision["actions"][answer])]
+
+
+def force_smith(decision: dict, legal: dict[int, object]) -> list[int]:
+    """Smith at a rest site when HP is at least 70% of max, where a heal of 30% would be mostly wasted."""
+    run = decision["state"]["run"]
+    if decision["kind"] != "rest" or run["hp"] < 0.7 * run["max_hp"]:
+        return []
+    return forced(decision, legal, is_smith)
+
+
+def force_removal(decision: dict, legal: dict[int, object]) -> list[int]:
+    """The card removal at a shop, whenever it is affordable."""
+    return forced(decision, legal, is_removal) if decision["kind"] == "shop" else []
+
+
+def force_card(decision: dict, legal: dict[int, object]) -> list[int]:
+    """A card at a card reward, any but the alternatives (Skip and the like)."""
+    if decision["kind"] != "card_reward":
+        return []
+    return forced(decision, legal, lambda state, action: action["kind"] == "pick")
+
+
+# The forced-choice modes (spec 017): the best action, but where the rule offers actions, the best among them only, so
+# what a choice is worth to the policy shows against "best" on the same seeds.
+FORCED = {"force_smith": force_smith, "force_removal": force_removal, "force_card": force_card}
 
 
 def play(env, seed: str, mode: str, choose) -> dict:
@@ -70,7 +102,11 @@ def play(env, seed: str, mode: str, choose) -> dict:
                 "steps": 0}
     steps = 0
     while True:
-        obs, _, terminated, truncated, info = env.step(choose(obs, env.action_masks(), rng))
+        mask = env.action_masks()
+        if mode in FORCED and (only := FORCED[mode](env.decision, env.legal)):
+            mask = np.zeros_like(mask)
+            mask[only] = True
+        obs, _, terminated, truncated, info = env.step(choose(obs, mask, rng))
         steps += 1
         if terminated or truncated:
             return {"seed": seed, "mode": mode, "outcome": info["outcome"], "floor": info["floor"],
@@ -172,7 +208,9 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="python -m agent.evaluate", description=__doc__.splitlines()[0])
     parser.add_argument("checkpoint", help="a checkpoint .pt file, or 'random' for the random agent")
     parser.add_argument("--games", type=int, default=4, help="games to run at once (default 4)")
-    parser.add_argument("--modes", default="best,sampled", help="for a checkpoint: best, sampled, or both (default)")
+    parser.add_argument("--modes", default="best,sampled",
+                        help="for a checkpoint: best and sampled (the default), or the forced choices force_smith, "
+                             "force_removal, force_card")
     parser.add_argument("--seeds", type=int, help="only the first N evaluation seeds (default all)")
     parser.add_argument("--game-command", help="a command to run instead of the game (the tests' fake game)")
     args = parser.parse_args(argv)

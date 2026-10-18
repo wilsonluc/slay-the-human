@@ -32,6 +32,18 @@ from agent.env.seeds import EVALUATION as EVALUATION_SEEDS
 from agent.env.vocabulary import Vocabulary
 
 SEED_CHARACTERS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+# Choices whose payoff comes fights later, counted per run as offered and taken (spec 017): card rewards on the rewards
+# screens and cards picked from them; rest site choices where Smith was offered and Smith chosen; shop visits where
+# the card removal was affordable on entering and removals bought.
+COUNTED_CHOICES = ("card_rewards", "smith", "card_removal")
+
+
+def is_smith(state: dict, action: dict) -> bool:
+    return action["kind"] == "rest" and state["rest"]["options"][action["option"]]["id"] == "SMITH"
+
+
+def is_removal(state: dict, action: dict) -> bool:
+    return action["kind"] == "buy" and state["shop"]["items"][action["item"]]["type"] == "card_removal"
 
 log = logging.getLogger(__name__)
 
@@ -92,8 +104,8 @@ class Environment:
         self._failure: str | None = None
         self._scores_of = reward.Scores()
         self._combat_turns: dict[int, int] = {}  # combats won before it -> the combat's last turn, for each combat
-        self._cards = {"offered": 0, "taken": 0}  # card rewards on the rewards screens, and cards picked from them
-        self._on_rewards = False
+        self._choices = {name: {"offered": 0, "taken": 0} for name in COUNTED_CHOICES}
+        self._on_rewards = self._in_shop = False
         try:
             self._bridge.start(self._seed, self.character, self.hang_seconds)
             message = self._bridge.next(self.hang_seconds)
@@ -127,7 +139,7 @@ class Environment:
         self._actions.append(action)
         before, decision = self._scores, self._decision
         answer = self._legal[action]
-        self._count_cards(decision, answer)
+        self._count_choices(decision, answer)
         message = None
         try:
             message = self._answer(answer)
@@ -174,6 +186,16 @@ class Environment:
 
     def action_masks(self) -> np.ndarray:
         return self._mask
+
+    @property
+    def decision(self) -> dict:
+        """The decision the game is waiting on."""
+        return self._decision
+
+    @property
+    def legal(self) -> dict[int, object]:
+        """Every legal action index, mapped to the answer it gives the game (Encoder.actions)."""
+        return self._legal
 
     def rng_state(self):
         """The state of the generator that draws game seeds, for a checkpoint."""
@@ -290,14 +312,30 @@ class Environment:
                 self._largest[name] = size
                 log.info("%s: largest %s so far: %d", self.name, name, size)
 
-    def _count_cards(self, decision: dict, answer) -> None:
-        """Counts the card rewards a rewards screen offers, once per visit to it, and the cards picked from them."""
-        kind = decision["kind"]
+    def _count_choices(self, decision: dict, answer) -> None:
+        """Counts COUNTED_CHOICES: the card rewards a rewards screen offers, once per visit to it, and the cards picked
+        from them; Smith at a rest site; the card removal at a shop, once per visit to it."""
+        kind, state = decision["kind"], decision["state"]
+        cards, smith, removal = (self._choices[name] for name in COUNTED_CHOICES)
+        chosen = decision["actions"][answer] if isinstance(answer, int) else {}
         if kind == "reward" and not self._on_rewards:
-            self._cards["offered"] += sum(r["type"] == "card" for r in decision["state"]["reward"]["rewards"])
-        elif kind == "card_reward" and self._on_rewards and decision["actions"][answer]["kind"] == "pick":
-            self._cards["taken"] += 1
+            cards["offered"] += sum(r["type"] == "card" for r in state["reward"]["rewards"])
+        elif kind == "card_reward" and self._on_rewards and chosen["kind"] == "pick":
+            cards["taken"] += 1
+        elif kind == "rest":
+            if any(is_smith(state, action) for action in decision["actions"]):
+                smith["offered"] += 1
+                smith["taken"] += is_smith(state, chosen)
+        elif kind == "shop":
+            # Gold only falls in a shop, so a removal bought was affordable on entering.
+            removal["offered"] += not self._in_shop and any(is_removal(state, action) for action in decision["actions"])
+            removal["taken"] += is_removal(state, chosen)
         self._on_rewards = kind in ("reward", "card_reward")
+        # The removal's card selection is part of the shop visit.
+        self._in_shop = kind == "shop" or kind == "card_select" and self._in_shop
+
+    def _choice_counts(self) -> dict:
+        return {name: dict(counts) for name, counts in self._choices.items()}
 
     def _turns_per_combat(self) -> float | None:
         """The run's mean turns per combat, which grows when the policy drags fights out."""
@@ -327,7 +365,7 @@ class Environment:
         self._finish(outcome, floor)
         info = self._info(outcome, outcome_reward)
         info["run"] = {**self._report.as_dict(), "turns_per_combat": self._turns_per_combat(),
-                       "card_rewards": dict(self._cards)}
+                       **self._choice_counts()}
         return self._obs, step_reward, terminated, not terminated, info
 
     def _finish(self, outcome: str, floor=None) -> None:
@@ -335,7 +373,7 @@ class Environment:
         runs, and a summary row for every run."""
         record = {"seed": self._seed, "outcome": outcome, "floor": floor if floor is not None else self._floor(),
                   "steps": self._steps, **self._report.as_dict(), "turns_per_combat": self._turns_per_combat(),
-                  "card_rewards": dict(self._cards),
+                  **self._choice_counts(),
                   "failure": self._failure, "actions": self._actions}
         failed = self._failure is not None and self._failure != "step_limit"
         if self._evaluation or failed or self._runs % self.trace_every == 0:

@@ -73,6 +73,8 @@ class TrainerTest(unittest.TestCase):
                      "steps_per_second", "update_share", "mean_return", "legal_actions", "entropy_event"):
             self.assertTrue(row[name] != "" and float(row[name]) == float(row[name]), name)
         self.assertEqual(row["runs"], "2")
+        for name in ("card_rewards_taken", "smith_taken", "card_removal_taken"):
+            self.assertEqual(row[name], "0.0", name)  # the fake runs offer each once and take none
 
     def test_the_same_seed_gives_the_same_metrics(self):
         first, second = self.trainer(small()), self.trainer(small())

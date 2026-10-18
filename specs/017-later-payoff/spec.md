@@ -1,6 +1,6 @@
 # 017: Choices that pay off later
 
-Status: draft
+Status: approved
 
 ## Problem
 

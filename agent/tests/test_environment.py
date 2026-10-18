@@ -62,23 +62,49 @@ class EnvironmentTest(unittest.TestCase):
         rewards, terminated, truncated, last = steps[-1]
         self.assertTrue(terminated and not truncated)
         self.assertEqual((last["outcome"], last["outcome_reward"]), ("loss", 0.0))  # a loss costs nothing of its own
-        self.assertEqual(set(last["run"]), {"contribution", "highest", "final", "turns_per_combat", "card_rewards"})
+        self.assertEqual(set(last["run"]), {"contribution", "highest", "final", "turns_per_combat", "card_rewards",
+                                            "smith", "card_removal"})
         self.assertGreater(last["run"]["turns_per_combat"], 0, "the recordings include a combat")
         self.assertTrue(all(not t and not tr for _, t, tr, _ in steps[:-1]))
 
     def test_card_rewards_are_counted_once_per_rewards_screen(self):
         env = self.env()
         env.reset(seed="ABC")
-        screen = lambda *types: {"kind": "reward", "actions": [], "state": {"reward": {"rewards": [
+        screen = lambda *types: {"kind": "reward", "actions": [{"kind": "proceed"}], "state": {"reward": {"rewards": [
             {"type": t} for t in types]}}}
-        pick = {"kind": "card_reward", "actions": [{"kind": "pick", "card": 0}, {"kind": "alternative"}]}
-        combat = {"kind": "combat", "actions": []}
+        pick = {"kind": "card_reward", "state": {}, "actions": [{"kind": "pick", "card": 0}, {"kind": "alternative"}]}
+        combat = {"kind": "combat", "state": {}, "actions": [{"kind": "end_turn"}]}
         # Two card rewards on one screen: the gold is taken (the screen comes back), one card picked, one left.
         for decision, answer in [(screen("gold", "card", "card"), 0), (screen("card", "card"), 0), (pick, 0),
                                  (screen("card"), 0), (combat, 0),
                                  (screen("card"), 0), (pick, 1), (screen("card"), 0), (combat, 0)]:
-            env._count_cards(decision, answer)
-        self.assertEqual(env._cards, {"offered": 3, "taken": 1})
+            env._count_choices(decision, answer)
+        self.assertEqual(env._choices["card_rewards"], {"offered": 3, "taken": 1})
+
+    def test_smith_is_counted_at_each_rest_site_choice_that_offers_it(self):
+        env = self.env()
+        env.reset(seed="ABC")
+        rest = lambda *ids: {"kind": "rest", "state": {"rest": {"options": [{"id": i} for i in ids]}},
+                             "actions": [{"kind": "rest", "option": i} for i in range(len(ids))]}
+        # Heal where Smith was offered; with the Miniature Tent, Smith as the second choice; a site without Smith.
+        for decision, answer in [(rest("HEAL", "SMITH"), 0), (rest("HEAL", "SMITH"), 1), (rest("HEAL", "LIFT"), 0)]:
+            env._count_choices(decision, answer)
+        self.assertEqual(env._choices["smith"], {"offered": 2, "taken": 1})
+
+    def test_the_card_removal_is_counted_once_per_shop_visit_where_it_is_affordable(self):
+        env = self.env()
+        env.reset(seed="ABC")
+        items = [{"type": "potion"}, {"type": "card_removal"}]
+        shop = lambda *buyable: {"kind": "shop", "state": {"shop": {"items": items}},
+                                 "actions": [{"kind": "buy", "item": i} for i in buyable] + [{"kind": "leave"}]}
+        remove = {"kind": "card_select", "state": {}, "actions": []}
+        combat = {"kind": "combat", "state": {}, "actions": [{"kind": "end_turn"}]}
+        # A visit that buys a potion, then the removal (its card selection stays in the visit); a visit that leaves;
+        # a visit where the removal is not affordable.
+        for decision, answer in [(shop(0, 1), 0), (shop(1), 0), (remove, ("pick", 0)), (shop(), 0), (combat, 0),
+                                 (shop(0, 1), 2), (combat, 0), (shop(0), 1)]:
+            env._count_choices(decision, answer)
+        self.assertEqual(env._choices["card_removal"], {"offered": 2, "taken": 1})
 
     def test_a_new_seed_is_drawn_and_recorded(self):
         env = self.env()

@@ -30,7 +30,7 @@ from agent import evaluate
 from agent.checkpoint import TrainingRun, identities
 from agent.env.seeds import evaluation_seeds
 from agent.env import encoding, reward
-from agent.env.environment import make_environments
+from agent.env.environment import COUNTED_CHOICES, make_environments
 from agent.env.vocabulary import Vocabulary
 from agent.ppo.buffer import Buffer
 from agent.ppo.config import Config, parse
@@ -126,16 +126,17 @@ def game_metrics(ended: list[dict], buffer: Buffer) -> dict:
         "turns_per_combat": mean([run["run"]["turns_per_combat"] for run in finished
                                   if run["run"] and run["run"].get("turns_per_combat") is not None]),
         "legal_actions": float(buffer.mask[buffer.filled].sum(-1).mean()),
-        "card_rewards_taken": share([run["run"]["card_rewards"] for run in finished if run["run"]]),
         "failed_runs": sum(failed(run) for run in ended),
     }
+    for name in COUNTED_CHOICES:
+        metrics[f"{name}_taken"] = share([run["run"][name] for run in finished if run["run"]])
     for term in reward.WEIGHTS:
         metrics[f"contribution_{term}"] = mean([run["run"]["contribution"][term] for run in finished if run["run"]])
     return metrics
 
 
 def share(counts: list[dict]) -> float | str:
-    """Cards picked out of card rewards offered, over the runs."""
+    """Taken out of offered, over the runs."""
     offered = sum(count["offered"] for count in counts)
     return sum(count["taken"] for count in counts) / offered if offered else ""
 

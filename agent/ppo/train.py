@@ -140,6 +140,11 @@ def share(counts: list[dict]) -> float | str:
     return sum(count["taken"] for count in counts) / offered if offered else ""
 
 
+# A game that exits mid-run closes the connection. The game's own crashes do (10 to 20 a day, in its garbage collector's
+# finalizers, at no particular state); the game is relaunched, and these runs do not count against the failure budget.
+CRASH = "the game closed the connection"
+
+
 def failed(run: dict) -> bool:
     """A run that failed: the game stopped, hung or disconnected, or the run never started. The step limit is not a
     failure."""
@@ -161,7 +166,7 @@ class Trainer:
         self.kinds = {vocabulary.index("KIND", kind): kind for kind in encoding.KINDS}
         self.updates = self.steps = 0
         self.evaluated = 0  # the step of the last generation
-        # The most recent runs: a failed run's outcome, else None.
+        # The most recent runs: a failed run's outcome, else None (a game crash too).
         self.window: collections.deque = collections.deque(maxlen=config.failure_window)
         self._snapshot: dict | None = None
 
@@ -174,7 +179,7 @@ class Trainer:
             "updates": self.updates, "steps": self.steps,
             "torch_rng": torch.get_rng_state(), "sampling_rng": [g.get_state() for g in self.collector.generators],
             "minibatch_rng": self.rng.bit_generator.state, "game_seed_rng": [env.rng_state() for env in self.envs],
-            "window": list(self.window), "evaluated": self.evaluated, "vocabulary_keys": list(self.vocabulary.keys),
+            "evaluated": self.evaluated, "vocabulary_keys": list(self.vocabulary.keys),
             "identities": identities(self.vocabulary),
         }
 
@@ -190,7 +195,7 @@ class Trainer:
         self.rng.bit_generator.state = state["minibatch_rng"]
         for env, saved in zip(self.envs, state["game_seed_rng"]):
             env.set_rng_state(saved)
-        self.window.extend(state["window"])
+        # The window starts empty: resuming a run the failure budget stopped is the call that its failures are dealt with.
         self.evaluated = state.get("evaluated", 0)
         self._snapshot = copy.deepcopy(self.state())
 
@@ -247,7 +252,7 @@ class Trainer:
         self.updates += 1
         filled = int(self.buffer.filled.sum())
         self.steps += filled
-        self.window.extend(run["outcome"] if failed(run) else None for run in ended)
+        self.window.extend(run["outcome"] if failed(run) and CRASH not in run["outcome"] else None for run in ended)
         elapsed = finished - began
         row = {"update": self.updates, "step": self.steps, "time": round(time.time(), 1), **learner,
                "learning_rate": self.optimizer.param_groups[0]["lr"],

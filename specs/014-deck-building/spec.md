@@ -1,6 +1,6 @@
 # 014: Deck building
 
-Status: approved
+Status: done
 
 ## Problem
 
@@ -38,25 +38,65 @@ On the rewards screen the agent cannot leave a card reward unopened or gold unta
 
 Rewards screen:
 
-- [ ] While a card reward is unopened or gold is untaken, the rewards screen does not offer proceeding. A test on recorded decisions shows it.
-- [ ] The card reward screen still offers Skip, and a skipped card reward is still not offered again.
-- [ ] The rewards screen after an event's fight responds to the agent's choices. The cause is found and fixed in the mod, and the plan records it.
+- [x] While a card reward is unopened or gold is untaken, the rewards screen does not offer proceeding. A test on recorded decisions shows it.
+- [x] The card reward screen still offers Skip, and a skipped card reward is still not offered again.
+- [x] The rewards screen after an event's fight responds to the agent's choices. The cause is found and fixed in the mod, and the plan records it.
 
 The deck:
 
-- [ ] The observation gives the size of the deck, and in combat of the hand, draw pile, discard pile and exhaust pile; and for each card in the deck and each card offered (card rewards, card selections, the shop) how many copies of it the deck holds: the same card with the same upgrade. Tests show two decks that differ only in copies give different observations and different states.
-- [ ] Every card in the observation, not only those in the hand, gives its energy cost (with X cost and no cost marked), and every number the game gives it, not only the first beyond damage and block. Tests show it on recorded cards.
-- [ ] A special card offered as a reward reaches the observation as a whole card, like a shop's card. A test shows it.
-- [ ] The observation gives the potions held and the belt's number of slots. A test shows a full belt and one with a free slot give different observations.
-- [ ] Every card set's pooling also gives its size and the counts of its cards' features, not only their mean and maximum. A test shows a set and the same set doubled pool differently.
-- [ ] The schema's hash changes, so a checkpoint from before is refused, naming the difference (training starts from scratch).
-- [ ] The result reports how much the policy's pick probabilities move on recorded card reward decisions when the deck is swapped for the starting deck, for `spec-013.pt` and for this spec's best checkpoint. (A measurement, with no threshold: it shows whether the picks depend on the deck.)
+- [x] The observation gives the size of the deck, and in combat of the hand, draw pile, discard pile and exhaust pile; and for each card in the deck and each card offered (card rewards, card selections, the shop) how many copies of it the deck holds: the same card with the same upgrade. Tests show two decks that differ only in copies give different observations and different states.
+- [x] Every card in the observation, not only those in the hand, gives its energy cost (with X cost and no cost marked), and every number the game gives it, not only the first beyond damage and block. Tests show it on recorded cards.
+- [x] A special card offered as a reward reaches the observation as a whole card, like a shop's card. A test shows it.
+- [x] The observation gives the potions held and the belt's number of slots. A test shows a full belt and one with a free slot give different observations.
+- [x] Every card set's pooling also gives its size and the counts of its cards' features, not only their mean and maximum. A test shows a set and the same set doubled pool differently.
+- [x] The schema's hash changes, so a checkpoint from before is refused, naming the difference (training starts from scratch).
+- [x] The result reports how much the policy's pick probabilities move on recorded card reward decisions when the deck is swapped for the starting deck, for `spec-013.pt` and for this spec's best checkpoint. (A measurement, with no threshold: it shows whether the picks depend on the deck.)
 
 Training:
 
-- [ ] A training run with six games and seed 2040, configured like spec 013's comparison (the 2,000,000-step schedule, stopped after 300,000 steps), opens the card reward on at least 95% of the rewards screens that offer one, and has no run fail with "the event was still asking after 50 choices".
-- [ ] If it does: a training run with six games, seed 2032 and a step budget of 2,000,000 runs to its budget, and its best generation is within 1.0 mean floor and 5 points past the act 1 boss of `spec-013.pt` (19.87, 30.7%) or better. Then the default goes back to six games. Otherwise the default stays at four, and the runs are reported.
-- [ ] No run in either training run fails with "the event was still asking after 50 choices".
+- [x] A training run with six games and seed 2040, configured like spec 013's comparison (the 2,000,000-step schedule, stopped after 300,000 steps), opens the card reward on at least 95% of the rewards screens that offer one, and has no run fail with "the event was still asking after 50 choices".
+- [x] If it does: a training run with six games, seed 2032 and a step budget of 2,000,000 runs to its budget, and its best generation is within 1.0 mean floor and 5 points past the act 1 boss of `spec-013.pt` (19.87, 30.7%) or better. Then the default goes back to six games. Otherwise the default stays at four, and the runs are reported.
+- [x] No run in either training run fails with "the event was still asking after 50 choices".
+
+## Result
+
+**Six games.** Training run `runs/20261016-003042` (6 games, seed 2040, the 2,000,000-step schedule), commit `8ca72c7`. At 300,000 steps the agent opened the card reward on 98.4% of the rewards screens that offered one, and no run failed with "the event was still asking after 50 choices". The run was then resumed and went on to its budget, so the 2,000,000-step comparison used seed 2040, not 2032:
+
+| Generation | Mean floor | Past the act 1 boss | Past the act 2 boss |
+|---|---|---|---|
+| 250,837 steps | 14.05 | 1.5% | 0% |
+| 750,405 steps | 15.44 | 9.5% | 0% |
+| 1,251,141 steps | 16.69 | 8.0% | 0% |
+| 2,000,709 steps | 16.90 | 9.0% | 0% |
+
+Far below `spec-013.pt` (19.87, 30.7%), so the default stays at four games. The skipping moved inside the card reward: the agent opened it and chose Skip, and the share of card rewards taken fell from 61% to 44%.
+
+**Four games.** Training run `runs/20261017-001901` (4 games, seed 2032, default config, `--total-steps 2000000`), commits `8ca72c7` and, from 1,113,280 steps, `6fc1874`. Generations on the 200 evaluation seeds, best action:
+
+| Generation | Mean floor | Past the act 1 boss | Past the act 2 boss | Failed runs |
+|---|---|---|---|---|
+| Update 245 (250,048 steps) | 18.66 | 24.5% | 0% | 8 |
+| Update 490 (500,928 steps) | 18.31 | 26.6% | 1.5% | 1 |
+| Update 734 (750,784 steps) | 18.64 | 24.1% | 0.5% | 1 |
+| Update 978 (1,000,640 steps) | 19.40 | 28.0% | 2.0% | 0 |
+| Update 1222 (1,250,496 steps) | 19.99 | 30.5% | 1.5% | 3 |
+| Update 1466 (1,500,352 steps) | 19.18 | 29.6% | 2.5% | 1 |
+| Update 1711 (1,750,433 steps) | 19.02 | 30.3% | 1.0% | 5 |
+| Update 1955 (2,000,289 steps) | 20.65 | 35.9% | 3.6% | 5 |
+
+The last generation is the best, kept as `spec-014.pt`: against `spec-013.pt`, 0.8 floors further, 5.2 points more past the act 1 boss and 2.1 more past the act 2 boss. Its first generation (18.66, 24.5%) is already near spec 013's at 1,250,000 steps.
+
+**Deck dependence.** Mean total variation distance between the pick probabilities with the real deck and with the run's starting deck, on the card reward decisions in the last third of each run's traces:
+
+| Checkpoint | Decisions | Mean | 0 to 2 cards added | 3 to 7 | 8 or more |
+|---|---|---|---|---|---|
+| `spec-013.pt` | 4,589 | 0.088 | 0.040 | 0.131 | 0.214 |
+| Six games, last | 4,021 | 0.068 | 0.037 | 0.130 | 0.378 |
+| `spec-014.pt` | 4,963 | 0.116 | 0.049 | 0.136 | 0.262 |
+
+Every policy picks by its deck, more so as the deck grows; `spec-014.pt` about a third more than `spec-013.pt`.
+
+**Training.** Approximate KL had a mean of 0.015 (clip fraction 0.060); over the second half 0.007, no 50 updates above 0.018. The share of card rewards taken fell per 250,000 steps from 84% to 51%, as in the six-game run but slower: the drift into skipping is not fixed by opening the card reward. Entropy over the last 50 updates: combat 0.33, map 0.11, reward 0.32, card reward 0.51, rest 0.09, card select 1.35, event 0.19, shop 1.14. 87 of 14,232 training runs failed, none with "the event was still asking after 50 choices"; the plan's "Found in training" lists the failures it fixed. Training made 38 steps a second on average.
 
 ## Open questions
 

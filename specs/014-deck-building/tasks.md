@@ -8,7 +8,7 @@
 - [x] 6. Build the mod; record the test decisions again under protocol 5.
 - [x] 7. Tests for every criterion above; the whole suite passes.
 - [x] 8. Docs: `docs/architecture.md`, `CONTEXT.md` where terms change.
-- [ ] 9. Six games, seed 2040, 300,000 steps: card reward opened on at least 95% of screens offering one; no stuck-screen failures.
-- [ ] 10. If so, six games, seed 2032, 2,000,000 steps; compare with `spec-013.pt`; set the default number of games.
-- [ ] 11. Deck dependence measured for `spec-013.pt` and the best checkpoint.
-- [ ] 12. Result in the spec; close.
+- [x] 9. Six games, seed 2040, 300,000 steps: card reward opened on at least 95% of screens offering one; no stuck-screen failures.
+- [x] 10. If so, six games, seed 2032, 2,000,000 steps; compare with `spec-013.pt`; set the default number of games.
+- [x] 11. Deck dependence measured for `spec-013.pt` and the best checkpoint.
+- [x] 12. Result in the spec; close.

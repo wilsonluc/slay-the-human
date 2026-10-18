@@ -29,7 +29,7 @@ On the rewards screen the agent cannot leave a card reward unopened or gold unta
 
 - Forcing a card pick: Skip stays on the card reward screen.
 - Potions and relics: taking them stays the agent's choice (a full potion belt, a relic with a downside).
-- Game crashes ("the game closed the connection") and other failure kinds.
+- Game crashes ("the game closed the connection") and other failure kinds, beyond the failure budget below.
 - What combat and events show beyond the above (power durations, non-attack intent amounts, event option costs, history): spec 015.
 - Attention between the cards offered and the deck's cards, for synergies between particular cards: a later spec, if the agent's picks still ignore its deck.
 - The results dashboard (now spec 016).
@@ -57,6 +57,12 @@ Training:
 - [x] A training run with six games and seed 2040, configured like spec 013's comparison (the 2,000,000-step schedule, stopped after 300,000 steps), opens the card reward on at least 95% of the rewards screens that offer one, and has no run fail with "the event was still asking after 50 choices".
 - [x] If it does: a training run with six games, seed 2032 and a step budget of 2,000,000 runs to its budget, and its best generation is within 1.0 mean floor and 5 points past the act 1 boss of `spec-013.pt` (19.87, 30.7%) or better. Then the default goes back to six games. Otherwise the default stays at four, and the runs are reported.
 - [x] No run in either training run fails with "the event was still asking after 50 choices".
+
+Found in training (amended 2026-10-17, the user's call after the four-game run stopped on the failure budget):
+
+- [x] Mad Science, which the Tinker Time event builds, reaches the observation with only its own type's and rider's numbers, so it fits the numbers a card holds.
+- [x] The game's own crashes are still ended as failed runs and logged, but do not count against the failure budget. A test shows crashed runs leave training running.
+- [x] A resumed training run starts its failure count afresh, so a run the budget stopped can continue. A test resumes one.
 
 ## Result
 

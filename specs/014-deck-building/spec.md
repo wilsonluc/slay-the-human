@@ -30,7 +30,7 @@ On the rewards screen the agent cannot leave a card reward unopened or gold unta
 - Forcing a card pick: Skip stays on the card reward screen.
 - Potions and relics: taking them stays the agent's choice (a full potion belt, a relic with a downside).
 - Game crashes ("the game closed the connection") and other failure kinds, beyond the failure budget below.
-- What combat and events show beyond the above (power durations, non-attack intent amounts, event option costs, history): spec 015.
+- What combat and events show beyond the above (power durations, non-attack intent amounts, event option costs, history): a later spec.
 - Attention between the cards offered and the deck's cards, for synergies between particular cards: a later spec, if the agent's picks still ignore its deck.
 - The results dashboard (now spec 016).
 
